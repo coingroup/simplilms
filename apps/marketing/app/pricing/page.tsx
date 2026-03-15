@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CheckCircle2, ArrowRight, X } from "lucide-react";
+import { CheckCircle2, ArrowRight, X, Sparkles } from "lucide-react";
+import { Header } from "../../components/header";
+import { Footer } from "../../components/footer";
+import { SECTOR_LIST } from "../../components/sector-data";
 
 export const metadata: Metadata = {
   title: "Pricing",
@@ -25,8 +28,10 @@ const tiers = [
       { text: "Student portal", included: true },
       { text: "Email notifications", included: true },
       { text: "Your branding (logo + colors)", included: true },
+      { text: "Core LMS (courses, quizzes)", included: true },
       { text: "Instructor marketplace", included: false },
       { text: "AI Course Creator", included: false },
+      { text: "Sector modules", included: false },
       { text: "White-label (custom domain)", included: false },
     ],
   },
@@ -49,6 +54,8 @@ const tiers = [
       { text: "SMS & WhatsApp notifications", included: true },
       { text: "Identity verification (KYC)", included: true },
       { text: "AI Course Creator", included: true },
+      { text: "Sector modules (add-on)", included: true },
+      { text: "Certificates & verification", included: true },
       { text: "Priority support", included: true },
       { text: "White-label (custom domain)", included: false },
     ],
@@ -73,6 +80,8 @@ const tiers = [
       { text: "SLA & dedicated support", included: true },
       { text: "Bulk pricing for multi-campus", included: true },
       { text: "API access", included: true },
+      { text: "1 sector module included", included: true },
+      { text: "Additional modules at discount", included: true },
     ],
   },
 ];
@@ -80,31 +89,7 @@ const tiers = [
 export default function PricingPage() {
   return (
     <div className="min-h-screen">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white font-bold text-sm">
-              S
-            </div>
-            <span className="text-xl font-bold text-foreground">SimpliLMS</span>
-          </Link>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/demo"
-              className="hidden text-sm font-medium text-muted-foreground hover:text-foreground sm:block"
-            >
-              Request Demo
-            </Link>
-            <Link
-              href="/get-started"
-              className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 transition-colors"
-            >
-              Get Started
-            </Link>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* Pricing Header */}
       <section className="py-16 sm:py-24">
@@ -186,6 +171,68 @@ export default function PricingPage() {
         </div>
       </section>
 
+      {/* Sector Module Add-Ons */}
+      <section className="border-t bg-muted/30 py-16 sm:py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-2xl text-center">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-blue-100 px-4 py-1.5 text-sm font-medium text-blue-700">
+              <Sparkles className="h-4 w-4" />
+              Industry-Specific Add-Ons
+            </div>
+            <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+              Sector modules
+            </h2>
+            <p className="mt-4 text-muted-foreground">
+              Add industry-specific AI prompts, compliance documentation,
+              curriculum frameworks, and assessment question banks to your plan.
+              Available on Professional and Enterprise.
+            </p>
+          </div>
+
+          <div className="mx-auto mt-12 grid max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {SECTOR_LIST.map((sector) => (
+              <Link
+                key={sector.slug}
+                href={`/industries/${sector.slug}`}
+                className="group rounded-xl border bg-card p-5 shadow-sm transition-all hover:shadow-md hover:border-primary/30"
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`flex h-10 w-10 items-center justify-center rounded-lg ${sector.colorBg} ${sector.colorText}`}
+                  >
+                    <sector.icon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                      {sector.name
+                        .replace(" Schools", "")
+                        .replace(" Training", "")
+                        .replace(" Agencies", "")}
+                    </h3>
+                    <p className="text-sm font-medium text-primary">
+                      +{sector.modulePrice}/mo
+                    </p>
+                  </div>
+                </div>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  {sector.questionBankSize} questions, compliance docs, AI
+                  prompts
+                </p>
+              </Link>
+            ))}
+          </div>
+
+          <div className="mt-8 mx-auto max-w-2xl">
+            <div className="rounded-lg border bg-card p-6 text-center">
+              <p className="text-sm text-foreground">
+                <strong>Enterprise customers:</strong> Your first sector module
+                is included free. Additional modules at 20% discount.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* FAQ */}
       <section className="border-t bg-muted/50 py-16 sm:py-24">
         <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
@@ -204,7 +251,7 @@ export default function PricingPage() {
               },
               {
                 q: "What does white-label mean?",
-                a: "Enterprise tier deploys under your own domain with your branding. Your students never see \"SimpliLMS\" anywhere. It's 100% your brand.",
+                a: 'Enterprise tier deploys under your own domain with your branding. Your students never see "SimpliLMS" anywhere. It\'s 100% your brand.',
               },
               {
                 q: "Do students pay through my Stripe account?",
@@ -213,6 +260,18 @@ export default function PricingPage() {
               {
                 q: "What is the AI Course Creator?",
                 a: "An AI assistant that interviews your subject matter experts and automatically builds structured courses with modules, lessons, quizzes, and learning objectives. Available on Professional and Enterprise plans.",
+              },
+              {
+                q: "What are sector modules?",
+                a: "Industry-specific add-ons that give the AI Course Creator deep knowledge of your sector's regulations, terminology, and standards. They include pre-built curriculum frameworks, compliance document templates, and assessment question banks aligned to licensing exams.",
+              },
+              {
+                q: "Can I add multiple sector modules?",
+                a: "Yes. If your school serves multiple industries (e.g., real estate and insurance), you can add both modules. Enterprise plans include one module free and get 20% off additional modules.",
+              },
+              {
+                q: "Which regulatory bodies do you support?",
+                a: "We generate documentation aligned to TWC (Texas), GNPEC (Georgia), BPPE (California), SCHEV (Virginia), ACCSC, COE, DEAC, and many more. Each sector module includes state-specific and national regulatory support.",
               },
             ].map((faq) => (
               <div key={faq.q}>
@@ -226,14 +285,7 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t bg-background py-8">
-        <div className="mx-auto max-w-7xl px-4 text-center text-sm text-muted-foreground sm:px-6 lg:px-8">
-          <p>
-            &copy; {new Date().getFullYear()} SimpliLMS. All rights reserved.
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

@@ -89,7 +89,20 @@ function mapRowToConfig(
       aiCourseCreator: featureFlags.ai_course_creator ?? false,
       certificates: featureFlags.certificates ?? true,
       quizzes: featureFlags.quizzes ?? true,
+
+      // Sector modules
+      sectorRealEstate: featureFlags.sector_real_estate ?? false,
+      sectorInsurance: featureFlags.sector_insurance ?? false,
+      sectorHealthcare: featureFlags.sector_healthcare ?? false,
+      sectorCdlTrucking: featureFlags.sector_cdl_trucking ?? false,
+      sectorCosmetology: featureFlags.sector_cosmetology ?? false,
+      sectorItTech: featureFlags.sector_it_tech ?? false,
+      sectorCorporateCompliance: featureFlags.sector_corporate_compliance ?? false,
+      sectorGovernment: featureFlags.sector_government ?? false,
     },
+
+    // Active sector keys (derived from feature flags)
+    activeSectors: deriveActiveSectors(featureFlags),
 
     // ISA partner config
     isaPartner: featureFlags.isa_enabled
@@ -140,8 +153,46 @@ function getEnvFallbackConfig(): TenantConfig {
       certificates:
         process.env.NEXT_PUBLIC_FEATURE_CERTIFICATES !== "false",
       quizzes: process.env.NEXT_PUBLIC_FEATURE_QUIZZES !== "false",
+
+      // Sector modules
+      sectorRealEstate:
+        process.env.NEXT_PUBLIC_SECTOR_REAL_ESTATE === "true",
+      sectorInsurance:
+        process.env.NEXT_PUBLIC_SECTOR_INSURANCE === "true",
+      sectorHealthcare:
+        process.env.NEXT_PUBLIC_SECTOR_HEALTHCARE === "true",
+      sectorCdlTrucking:
+        process.env.NEXT_PUBLIC_SECTOR_CDL_TRUCKING === "true",
+      sectorCosmetology:
+        process.env.NEXT_PUBLIC_SECTOR_COSMETOLOGY === "true",
+      sectorItTech:
+        process.env.NEXT_PUBLIC_SECTOR_IT_TECH === "true",
+      sectorCorporateCompliance:
+        process.env.NEXT_PUBLIC_SECTOR_CORPORATE_COMPLIANCE === "true",
+      sectorGovernment:
+        process.env.NEXT_PUBLIC_SECTOR_GOVERNMENT === "true",
     },
   };
+}
+
+/** Derive active sector keys from feature flags */
+function deriveActiveSectors(
+  flags: Record<string, boolean>
+): string[] {
+  const sectorMap: Record<string, string> = {
+    sector_real_estate: "real_estate",
+    sector_insurance: "insurance",
+    sector_healthcare: "healthcare",
+    sector_cdl_trucking: "cdl_trucking",
+    sector_cosmetology: "cosmetology",
+    sector_it_tech: "it_tech",
+    sector_corporate_compliance: "corporate_compliance",
+    sector_government: "government",
+  };
+
+  return Object.entries(sectorMap)
+    .filter(([flag]) => flags[flag])
+    .map(([, key]) => key);
 }
 
 /** Build a short portal name from a full org name */

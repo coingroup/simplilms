@@ -67,7 +67,28 @@ export interface TenantConfig {
     certificates: boolean;
     /** Quiz engine */
     quizzes: boolean;
+
+    // Sector modules (industry-specific AI, compliance docs, question banks)
+    /** Real estate schools (TREC, GREC, FREC, DRE) */
+    sectorRealEstate: boolean;
+    /** Insurance & financial services (state DOI, NAIC, FINRA, NMLS) */
+    sectorInsurance: boolean;
+    /** Healthcare training — CNA, MA, phlebotomy (nursing boards, CMS, NAACLS) */
+    sectorHealthcare: boolean;
+    /** CDL trucking schools (FMCSA ELDT, state DMV) */
+    sectorCdlTrucking: boolean;
+    /** Cosmetology & beauty schools (state boards, NIC) */
+    sectorCosmetology: boolean;
+    /** IT & tech training (CompTIA, AWS, Azure) */
+    sectorItTech: boolean;
+    /** Corporate compliance training (OSHA, HIPAA, EEO) */
+    sectorCorporateCompliance: boolean;
+    /** Government agencies (OPM, EEOC, CISA) */
+    sectorGovernment: boolean;
   };
+
+  /** List of active sector module keys */
+  activeSectors?: string[];
 
   /** ISA partner details (only if isaEnabled) */
   isaPartner?: {

@@ -4,62 +4,20 @@ import {
   CreditCard,
   Users,
   BarChart3,
-  Shield,
   Sparkles,
   CheckCircle2,
   ArrowRight,
   BookOpen,
   Brain,
 } from "lucide-react";
+import { Header } from "../components/header";
+import { Footer } from "../components/footer";
+import { SECTOR_LIST } from "../components/sector-data";
 
 export default function HomePage() {
   return (
     <div className="min-h-screen">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white font-bold text-sm">
-              S
-            </div>
-            <span className="text-xl font-bold text-foreground">SimpliLMS</span>
-          </Link>
-          <nav className="hidden items-center gap-6 md:flex">
-            <Link
-              href="#features"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Features
-            </Link>
-            <Link
-              href="/pricing"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Pricing
-            </Link>
-            <Link
-              href="#how-it-works"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              How It Works
-            </Link>
-          </nav>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/demo"
-              className="hidden text-sm font-medium text-muted-foreground hover:text-foreground sm:block"
-            >
-              Request Demo
-            </Link>
-            <Link
-              href="/get-started"
-              className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 transition-colors"
-            >
-              Get Started
-            </Link>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* Hero */}
       <section className="relative overflow-hidden bg-gradient-to-b from-blue-50 to-white py-20 sm:py-32">
@@ -187,11 +145,55 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Industries */}
+      <section className="bg-muted/30 py-16 sm:py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+              Built for your industry
+            </h2>
+            <p className="mt-4 text-lg text-muted-foreground">
+              Sector-specific AI modules with compliance documentation,
+              curriculum frameworks, and assessment question banks.
+            </p>
+          </div>
+          <div className="mx-auto mt-12 grid max-w-5xl grid-cols-2 gap-4 sm:grid-cols-4">
+            {SECTOR_LIST.map((sector) => (
+              <Link
+                key={sector.slug}
+                href={`/industries/${sector.slug}`}
+                className="group flex flex-col items-center gap-3 rounded-xl border bg-card p-5 text-center transition-all hover:shadow-md hover:border-primary/30"
+              >
+                <div
+                  className={`flex h-12 w-12 items-center justify-center rounded-lg ${sector.colorBg} ${sector.colorText}`}
+                >
+                  <sector.icon className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                    {sector.name}
+                  </h3>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    From {sector.modulePrice}/mo
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+          <div className="mt-8 text-center">
+            <Link
+              href="/industries"
+              className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+            >
+              View all industries
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* How It Works */}
-      <section
-        id="how-it-works"
-        className="bg-muted/50 py-20 sm:py-28"
-      >
+      <section id="how-it-works" className="py-20 sm:py-28">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
@@ -240,7 +242,7 @@ export default function HomePage() {
       </section>
 
       {/* Social Proof */}
-      <section className="py-20 sm:py-28">
+      <section className="bg-muted/50 py-20 sm:py-28">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
@@ -297,78 +299,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t bg-background py-12">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white font-bold text-sm">
-                  S
-                </div>
-                <span className="text-lg font-bold">SimpliLMS</span>
-              </div>
-              <p className="mt-3 text-sm text-muted-foreground">
-                All-in-one admissions, enrollment, and learning management for
-                training schools.
-              </p>
-            </div>
-            <div>
-              <h4 className="text-sm font-semibold text-foreground">Product</h4>
-              <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-                <li>
-                  <Link href="#features" className="hover:text-foreground">
-                    Features
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/pricing" className="hover:text-foreground">
-                    Pricing
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/demo" className="hover:text-foreground">
-                    Request Demo
-                  </Link>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-sm font-semibold text-foreground">Company</h4>
-              <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-                <li>
-                  <Link href="/about" className="hover:text-foreground">
-                    About
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/contact" className="hover:text-foreground">
-                    Contact
-                  </Link>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-sm font-semibold text-foreground">Legal</h4>
-              <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-                <li>
-                  <Link href="/privacy" className="hover:text-foreground">
-                    Privacy Policy
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/terms" className="hover:text-foreground">
-                    Terms of Service
-                  </Link>
-                </li>
-              </ul>
-            </div>
-          </div>
-          <div className="mt-8 border-t pt-8 text-center text-sm text-muted-foreground">
-            <p>&copy; {new Date().getFullYear()} SimpliLMS. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
