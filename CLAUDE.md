@@ -21,9 +21,9 @@ SimpliLMS is an all-in-one SaaS platform for training schools and education busi
 5. **Instructor Portal** — Classes, attendance, Zoom integration, earnings (Stripe Connect)
 6. **Multi-Tenant** — Each customer gets their own branded deployment with isolated data
 
-**Future:**
+**Built:**
 - **Core LMS** — Courses, modules, lessons, quizzes, progress tracking, certificates
-- **AI Course Creator** — AI interviews SMEs and builds courses automatically
+- **AI Course Creator** — Claude API interviews SMEs and builds courses automatically with sector-specific prompts
 
 ---
 
@@ -132,24 +132,25 @@ npx turbo dev         # Dev server (platform: 3000, marketing: 3001)
   - Each sector page includes: pain points, features, AI capabilities, compliance docs, regulators, question bank size, platform features, pricing CTA, cross-links to other sectors
   - Shared Header and Footer components (extracted from inline)
   - Marketing site now: 14 statically generated pages
-- `packages/core` — 60+ shared files (7 lib, 13 actions, 40 components)
+- `packages/core` — 70+ shared files (8 lib, 14 actions, 45 components)
   - Tenant server actions: CRUD for whitelabel_tenants table
   - `buildTenantContext()` added to all n8n webhook payloads
   - **LMS actions**: courses.ts, progress.ts, quizzes.ts (Course/Module/Lesson CRUD, progress tracking, quiz auto-grading, certificates)
+  - **AI Course Creator**: ai-service.ts (Claude API client, prompts), ai-course.ts (server actions), 5 UI components
   - **Sector module feature flags**: 8 new flags in TenantConfig (sectorRealEstate, sectorInsurance, sectorHealthcare, sectorCdlTrucking, sectorCosmetology, sectorItTech, sectorCorporateCompliance, sectorGovernment)
   - `activeSectors` derived array in TenantConfig
   - `deriveActiveSectors()` helper in load-tenant-config
 - `packages/ui` — 18 shadcn/ui components
 - `packages/database` — Typed Supabase client
 - `packages/auth` — Supabase Auth with role-based helpers
-- `supabase/` — 8 migration files (6 per-tenant schema + 1 whitelabel_tenants + 1 LMS tables)
+- `supabase/` — 9 migration files (6 per-tenant schema + 1 whitelabel_tenants + 1 LMS tables + 1 AI course interviews)
 - `n8n/` — 15 workflow JSONs for admissions automation
 - `scripts/` — Tenant provisioning CLI
   - `provision-tenant.ts` — Interactive script: generates .env + seed.sql
   - `apply-migrations.ts` — Applies migrations to new Supabase projects
   - `templates/tenant-seed.sql` — Parameterized seed template
 - `docs/sector-strategy.md` — Full sector strategy document with architecture, revenue model ($681M TAM), market sizing per sector, regulatory compliance approach, and implementation roadmap
-- Build verified: `turbo build` passes for all apps (marketing: 14 pages, platform: 43 routes)
+- Build verified: `turbo build` passes for all apps (marketing: 14 pages, platform: 45 routes)
 
 #### Phase 11: Core LMS (Completed)
 - **Database migration** (`20260316000001_lms_tables.sql`): 9 new tables — courses, modules, lessons, quizzes, quiz_questions, course_enrollments, lesson_progress, quiz_attempts, certificates. Full RLS policies, indexes, triggers, and `generate_certificate_number()` function.
@@ -184,19 +185,51 @@ npx turbo dev         # Dev server (platform: 3000, marketing: 3001)
 - **Marketing pages**: 8 sector landing pages + hub page + updated pricing + updated home page
 - **Regulatory bodies covered**: TWC, GNPEC, BPPE, SCHEV, ACCSC, COE, DEAC, FMCSA, state DOI, nursing boards, cosmetology boards, OPM, and more
 
+#### Phase 12: AI Course Creator (Completed)
+- **Database migration** (`20260316000002_ai_course_interviews.sql`): ai_course_interviews table with status enum (interviewing/generating/review/completed/failed), generation_mode (interview/document/topic), sector_key, messages jsonb, uploaded_documents jsonb, generated_outline jsonb, token tracking. Full RLS policies.
+- **AI service layer** (`packages/core/src/lib/ai-service.ts`, ~300 lines):
+  - Claude API client (claude-sonnet-4-20250514 for both interview and generation)
+  - `getInterviewSystemPrompt()` — builds SME interview system prompt with sector context
+  - `getGenerationSystemPrompt()` — JSON schema output with quality requirements
+  - `getDocumentGenerationPrompt()` — for document upload mode
+  - `SECTOR_AI_PROMPTS` — 8 detailed sector prompts covering regulations, terminology, standards for: real estate (TREC, GREC, FREC, DRE), insurance (DOI, NAIC, FINRA, NMLS), healthcare (nursing boards, CMS, NAACLS), CDL (FMCSA, ELDT), cosmetology (NIC, state boards), IT/tech (CompTIA, AWS, Azure), corporate compliance (OSHA, HIPAA, EEO), government (OPM, EEOC, CISA)
+  - `parseGeneratedOutline()`, `isReadyToGenerate()`, `stripReadyMarker()` helpers
+  - Types: ChatMessage, GeneratedOutline, GeneratedModule, GeneratedLesson, GeneratedQuizQuestion
+- **Server actions** (`packages/core/src/actions/ai-course.ts`, ~780 lines):
+  - `startInterview(formData)` — creates interview, calls Claude for first question (interview mode) or creates row for document mode
+  - `sendInterviewMessage(interviewId, userMessage)` — appends message, calls Claude, detects `[READY_TO_GENERATE]` marker, tracks tokens
+  - `generateCourseFromInterview(interviewId)` — sends transcript/documents to Claude for structured JSON, parses outline
+  - `createCourseFromOutline(interviewId, editedOutline?)` — inserts into courses, modules, lessons, quizzes, quiz_questions from outline
+  - `addDocumentToInterview(interviewId, formData)` — text extraction, stores in interview record
+  - `deleteAiInterview(interviewId)` — cleanup
+  - Queries: `getAiInterviews()`, `getAiInterview(id)`
+- **5 UI components** (`packages/core/src/components/ai-course/`):
+  - `interview-start-form.tsx` — topic, audience, length, sector, mode selection (interview vs document)
+  - `interview-chat.tsx` — real-time chat with typing indicator, auto-scroll, readiness banner
+  - `outline-review.tsx` — editable title/description, difficulty badge, learning objectives, module cards, create/regenerate buttons
+  - `outline-module-card.tsx` — collapsible module with lesson list, duration, quiz count
+  - `interview-status-badge.tsx` — color-coded: interviewing=blue, generating=amber, review=green, completed=gray, failed=red
+- **3 admin pages** (`apps/platform/app/(dashboard)/admin/courses/ai/`):
+  - `page.tsx` — AI Course Creator listing with interview table or empty state
+  - `new/page.tsx` — InterviewStartForm page
+  - `[interviewId]/page.tsx` — status-based rendering (chat → spinner → outline review → success → error)
+- Updated admin courses page with "Create with AI" button (Sparkles icon)
+- Three generation modes: SME Interview, Document Upload, Topic-based
+- Build verified: 45 platform routes
+
 ### In Progress
 - None
 
 ### Next
-- Phase 12: AI Course Creator — see `docs/phase-11-12-plan.md`
-  - Claude API-powered SME interview → automatic course generation
-  - Sector-specific AI prompts (tuned to each sector module's regulations)
-  - 1 new table (ai_course_interviews), 3 new routes, ~16 new files
 - Sector module database tables: `sector_modules`, `tenant_sector_subscriptions`, `sector_question_banks`
-- Sector module content: AI system prompts, curriculum frameworks, question banks per sector
-- LMS migration needs to be applied to Supabase project
+- Sector module content: curriculum frameworks, question banks per sector
+- LMS + AI Course Creator migrations need to be applied to Supabase project
+- ANTHROPIC_API_KEY environment variable needs to be configured for AI features
+- Document upload mode refinement (PDF parsing beyond basic text extraction)
 
 ### Blockers / Decisions Pending
 - simplilms.com domain registration needed
 - First tenant (COIN Education) needs to be configured as a deployment
 - LMS migration (`20260316000001_lms_tables.sql`) needs to be applied to Supabase
+- AI migration (`20260316000002_ai_course_interviews.sql`) needs to be applied to Supabase
+- `ANTHROPIC_API_KEY` environment variable needed for AI Course Creator
