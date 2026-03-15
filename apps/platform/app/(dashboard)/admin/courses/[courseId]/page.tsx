@@ -10,7 +10,7 @@ import {
   toggleCoursePublished,
 } from "@simplilms/core/actions/courses";
 import { getCourseEnrollmentCount } from "@simplilms/core/actions/progress";
-import { Badge } from "@simplilms/ui";
+import { Badge, Button } from "@simplilms/ui";
 import { ArrowLeft, Pencil, Users } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -101,13 +101,21 @@ export default async function CourseDetailPage({
             <p className="text-sm text-gray-500 mt-1">{course.description}</p>
           )}
         </div>
-        <Link
-          href={`/admin/courses/${courseId}/edit`}
-          className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
-        >
-          <Pencil className="h-4 w-4" />
-          Edit Course
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href={`/admin/courses/${courseId}/students`}>
+            <Button variant="outline" size="sm">
+              <Users className="h-4 w-4 mr-2" />
+              Manage Students ({enrollmentCount})
+            </Button>
+          </Link>
+          <Link
+            href={`/admin/courses/${courseId}/edit`}
+            className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
+          >
+            <Pencil className="h-4 w-4" />
+            Edit Course
+          </Link>
+        </div>
       </div>
 
       {/* Course Metadata */}

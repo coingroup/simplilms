@@ -63,6 +63,7 @@ export default async function StudentCoursePlayerPage({
         modules={courseData.modules}
         progress={progress}
         courseId={courseId}
+        studentId={user.user.id}
       />
     </div>
   );

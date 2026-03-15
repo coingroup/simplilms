@@ -274,6 +274,89 @@ export async function getCertificateByVerificationCode(
 }
 
 // ============================================================
+// Queries — Course Enrollment Management (Admin)
+// ============================================================
+
+export interface CourseEnrollmentWithStudent extends CourseEnrollmentRow {
+  student?: {
+    id: string;
+    first_name: string | null;
+    last_name: string | null;
+    email: string | null;
+  };
+}
+
+export async function getCourseEnrollments(
+  courseId: string
+): Promise<CourseEnrollmentWithStudent[]> {
+  const supabase = await createServerClient();
+  const { data, error } = await (supabase as any)
+    .from("course_enrollments")
+    .select("*, student:profiles!course_enrollments_student_id_fkey(id, first_name, last_name, email)")
+    .eq("course_id", courseId)
+    .order("enrolled_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching course enrollments:", error);
+    return [];
+  }
+  return (data || []).map((row: any) => ({
+    ...row,
+    student: row.student || undefined,
+  })) as CourseEnrollmentWithStudent[];
+}
+
+export async function getAvailableStudents(): Promise<
+  { id: string; first_name: string | null; last_name: string | null; email: string | null }[]
+> {
+  const supabase = await createServerClient();
+  const { data, error } = await (supabase as any)
+    .from("profiles")
+    .select("id, first_name, last_name, email")
+    .in("role", ["student"])
+    .order("last_name", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching students:", error);
+    return [];
+  }
+  return data || [];
+}
+
+export async function updateCourseEnrollmentStatus(
+  enrollmentId: string,
+  status: "active" | "dropped" | "expired"
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { user, error: authError } = await getUser();
+    if (authError || !user) return { success: false, error: "Unauthorized" };
+    if (user.role !== "super_admin")
+      return { success: false, error: "Insufficient permissions" };
+
+    const supabase = await createServerClient();
+    const updateData: Record<string, unknown> = { status };
+    if (status === "dropped") {
+      updateData.completed_at = null;
+    }
+
+    const { error } = await (supabase as any)
+      .from("course_enrollments")
+      .update(updateData)
+      .eq("id", enrollmentId);
+
+    if (error) {
+      console.error("Error updating enrollment:", error);
+      return { success: false, error: "Failed to update enrollment" };
+    }
+
+    return { success: true };
+  } catch (err) {
+    console.error("updateCourseEnrollmentStatus error:", err);
+    return { success: false, error: "An unexpected error occurred" };
+  }
+}
+
+// ============================================================
 // Mutations — Course Enrollment
 // ============================================================
 

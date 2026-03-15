@@ -23,6 +23,7 @@ import type {
   ModuleRow,
   LessonRow,
 } from "@simplilms/core/actions/courses";
+import { QuizPlayer } from "./quiz-player";
 
 interface ModuleWithLessons extends ModuleRow {
   lessons: LessonRow[];
@@ -33,6 +34,7 @@ interface CoursePlayerClientProps {
   modules: ModuleWithLessons[];
   progress: LessonProgressRow[];
   courseId: string;
+  studentId: string;
 }
 
 function getLessonIcon(contentType: string) {
@@ -55,6 +57,7 @@ export function CoursePlayerClient({
   modules,
   progress,
   courseId,
+  studentId,
 }: CoursePlayerClientProps) {
   const [currentLessonId, setCurrentLessonId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -259,7 +262,11 @@ export function CoursePlayerClient({
 
               {/* Lesson Content */}
               <div className="mb-6">
-                <LessonContent lesson={currentLesson} />
+                <LessonContent
+                  lesson={currentLesson}
+                  studentId={studentId}
+                  onQuizComplete={handleCompleteLesson}
+                />
               </div>
 
               {/* Actions */}
@@ -315,7 +322,15 @@ export function CoursePlayerClient({
   );
 }
 
-function LessonContent({ lesson }: { lesson: LessonRow }) {
+function LessonContent({
+  lesson,
+  studentId,
+  onQuizComplete,
+}: {
+  lesson: LessonRow;
+  studentId: string;
+  onQuizComplete?: () => void;
+}) {
   const content = lesson.content as Record<string, unknown>;
 
   switch (lesson.content_type) {
@@ -407,6 +422,19 @@ function LessonContent({ lesson }: { lesson: LessonRow }) {
       ) : (
         <p className="text-sm text-muted-foreground italic">
           No embed available for this lesson.
+        </p>
+      );
+
+    case "quiz":
+      return content.quiz_id ? (
+        <QuizPlayer
+          quizId={content.quiz_id as string}
+          studentId={studentId}
+          onComplete={onQuizComplete}
+        />
+      ) : (
+        <p className="text-sm text-muted-foreground italic">
+          No quiz linked to this lesson.
         </p>
       );
 

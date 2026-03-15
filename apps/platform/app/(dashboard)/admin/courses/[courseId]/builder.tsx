@@ -14,6 +14,7 @@ import {
   Badge,
 } from "@simplilms/ui";
 import type { ModuleRow, LessonRow } from "@simplilms/core/actions/courses";
+import Link from "next/link";
 import {
   BookOpen,
   ChevronDown,
@@ -25,6 +26,7 @@ import {
   File,
   Code,
   HelpCircle,
+  Pencil,
   Plus,
   Trash2,
   X,
@@ -356,16 +358,19 @@ export function CourseBuilderClient({
                           key={lesson.id}
                           className="flex items-center justify-between py-2 px-3 rounded-md hover:bg-gray-50 group"
                         >
-                          <div className="flex items-center gap-3">
-                            <span className="text-xs text-gray-400 w-6">
+                          <Link
+                            href={`/admin/courses/${courseId}/lessons/${lesson.id}`}
+                            className="flex items-center gap-3 flex-1 min-w-0"
+                          >
+                            <span className="text-xs text-gray-400 w-6 shrink-0">
                               {modIndex + 1}.{lessonIndex + 1}
                             </span>
-                            <span className="text-gray-500">
+                            <span className="text-gray-500 shrink-0">
                               {CONTENT_TYPE_ICONS[lesson.content_type] || (
                                 <FileText className="h-4 w-4" />
                               )}
                             </span>
-                            <span className="text-sm text-gray-900">
+                            <span className="text-sm text-gray-900 truncate">
                               {lesson.title}
                             </span>
                             <Badge
@@ -378,25 +383,33 @@ export function CourseBuilderClient({
                                 lesson.content_type}
                             </Badge>
                             {lesson.duration_minutes !== null && (
-                              <span className="text-xs text-gray-400">
+                              <span className="text-xs text-gray-400 shrink-0">
                                 {lesson.duration_minutes} min
                               </span>
                             )}
+                          </Link>
+                          <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Link
+                              href={`/admin/courses/${courseId}/lessons/${lesson.id}`}
+                            >
+                              <Button variant="ghost" size="sm">
+                                <Pencil className="h-4 w-4 text-gray-500" />
+                              </Button>
+                            </Link>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                setConfirmDelete({
+                                  type: "lesson",
+                                  id: lesson.id,
+                                  name: lesson.title,
+                                })
+                              }
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={() =>
-                              setConfirmDelete({
-                                type: "lesson",
-                                id: lesson.id,
-                                name: lesson.title,
-                              })
-                            }
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
                         </div>
                       ))}
                     </div>

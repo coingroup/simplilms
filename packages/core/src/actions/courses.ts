@@ -148,6 +148,23 @@ export async function getLessonsByModule(
   return (data || []) as LessonRow[];
 }
 
+export async function getLessonById(
+  lessonId: string
+): Promise<LessonRow | null> {
+  const supabase = await createServerClient();
+  const { data, error } = await (supabase as any)
+    .from("lessons")
+    .select("*")
+    .eq("id", lessonId)
+    .single();
+
+  if (error) {
+    console.error("Error fetching lesson:", error);
+    return null;
+  }
+  return data as LessonRow;
+}
+
 export async function getCourseWithContent(courseId: string): Promise<{
   course: CourseRow;
   modules: (ModuleRow & { lessons: LessonRow[] })[];
