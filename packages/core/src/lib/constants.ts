@@ -15,6 +15,7 @@ import {
   User,
   Building2,
   Award,
+  Layers,
   type LucideIcon,
 } from "lucide-react";
 
@@ -37,6 +38,7 @@ export const SIDEBAR_NAV: Record<UserRole, NavItem[]> = {
     { label: "Instructors", href: "/admin/instructors", icon: BookOpen },
     { label: "Courses", href: "/admin/courses", icon: BookOpen },
     { label: "Certificates", href: "/admin/certificates", icon: Award },
+    { label: "Sectors", href: "/admin/sectors", icon: Layers },
     { label: "Classes", href: "/admin/classes", icon: Calendar },
     { label: "Messages", href: "/admin/messages", icon: MessageSquare },
     { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },

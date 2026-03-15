@@ -28,7 +28,8 @@ const DESIRED_LENGTH_OPTIONS = [
   { value: "20+ hours", label: "20+ hours" },
 ];
 
-const SECTOR_OPTIONS = [
+/** Fallback sector options (used when no dynamic sectors are provided) */
+const DEFAULT_SECTOR_OPTIONS = [
   { value: "", label: "Generic (No specific sector)" },
   { value: "real_estate", label: "Real Estate" },
   { value: "insurance", label: "Insurance" },
@@ -40,7 +41,13 @@ const SECTOR_OPTIONS = [
   { value: "government", label: "Government" },
 ];
 
-export function InterviewStartForm() {
+interface InterviewStartFormProps {
+  /** Dynamic sector options from tenant subscriptions. Falls back to defaults if not provided. */
+  sectorOptions?: { value: string; label: string }[];
+}
+
+export function InterviewStartForm({ sectorOptions }: InterviewStartFormProps) {
+  const activeSectorOptions = sectorOptions || DEFAULT_SECTOR_OPTIONS;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -144,7 +151,7 @@ export function InterviewStartForm() {
                 <SelectValue placeholder="Select a sector for specialized prompts" />
               </SelectTrigger>
               <SelectContent>
-                {SECTOR_OPTIONS.map((option) => (
+                {activeSectorOptions.map((option) => (
                   <SelectItem
                     key={option.value || "generic"}
                     value={option.value || "generic"}
