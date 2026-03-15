@@ -142,8 +142,13 @@ npx turbo dev         # Dev server (platform: 3000, marketing: 3001)
 - None
 
 ### Next
-- Phase 11: Core LMS features (courses, modules, lessons, quizzes, progress, certificates)
-- Phase 12: AI Course Creator (Claude API interview engine, auto course builder)
+- Phase 11: Core LMS features — see `docs/phase-11-12-plan.md`
+  - 9 new tables (courses, modules, lessons, quizzes, quiz_questions, course_enrollments, lesson_progress, quiz_attempts, certificates)
+  - ~14 new routes (admin course builder, student course player, teacher grading)
+  - ~41 new files
+- Phase 12: AI Course Creator — see `docs/phase-11-12-plan.md`
+  - Claude API-powered SME interview → automatic course generation
+  - 1 new table (ai_course_interviews), 3 new routes, ~16 new files
 
 ### Blockers / Decisions Pending
 - simplilms.com domain registration needed
