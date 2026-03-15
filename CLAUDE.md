@@ -105,13 +105,13 @@ npx turbo dev         # Dev server (platform: 3000, marketing: 3001)
 
 ## Current State
 
-**Last updated:** 2026-03-15
+**Last updated:** 2026-03-16
 
 ### Completed
 - Turborepo monorepo with 5 packages and 2 apps
 - All @simplilms/* packages renamed from @coin-education/*
 - Zero COIN Education references in runtime code
-- `apps/platform` — Full admissions/enrollment SaaS (38 routes + middleware)
+- `apps/platform` — Full admissions/enrollment SaaS (43 routes + middleware)
   - CRM & prospect pipeline
   - Application flow with 5-step wizard
   - Stripe Identity KYC
@@ -121,35 +121,57 @@ npx turbo dev         # Dev server (platform: 3000, marketing: 3001)
   - Role-based access control (5 roles)
   - Tenant-dynamic branding (TenantProvider + ThemeInjector)
   - **Tenant admin panel** (list, create, detail/edit) — super_admin only
+  - **Core LMS** (Phase 11) — see below
 - `apps/marketing` — SimpliLMS landing page + pricing page
   - Landing: hero, features grid, how-it-works, social proof, CTA
   - Pricing: 3 tiers (Starter $99, Professional $299, Enterprise $999)
-- `packages/core` — 57 shared files (7 lib, 10 actions, 40 components)
+- `packages/core` — 60+ shared files (7 lib, 13 actions, 40 components)
   - Tenant server actions: CRUD for whitelabel_tenants table
   - `buildTenantContext()` added to all n8n webhook payloads
+  - **LMS actions**: courses.ts, progress.ts, quizzes.ts (Course/Module/Lesson CRUD, progress tracking, quiz auto-grading, certificates)
 - `packages/ui` — 18 shadcn/ui components
 - `packages/database` — Typed Supabase client
 - `packages/auth` — Supabase Auth with role-based helpers
-- `supabase/` — 7 migration files (6 per-tenant schema + 1 whitelabel_tenants)
+- `supabase/` — 8 migration files (6 per-tenant schema + 1 whitelabel_tenants + 1 LMS tables)
 - `n8n/` — 15 workflow JSONs for admissions automation
 - `scripts/` — Tenant provisioning CLI
   - `provision-tenant.ts` — Interactive script: generates .env + seed.sql
   - `apply-migrations.ts` — Applies migrations to new Supabase projects
   - `templates/tenant-seed.sql` — Parameterized seed template
-- Build verified: `turbo build` passes for all apps (marketing: 3 routes, platform: 38 routes)
+- Build verified: `turbo build` passes for all apps (marketing: 3 routes, platform: 43 routes)
+
+#### Phase 11: Core LMS (Completed)
+- **Database migration** (`20260316000001_lms_tables.sql`): 9 new tables — courses, modules, lessons, quizzes, quiz_questions, course_enrollments, lesson_progress, quiz_attempts, certificates. Full RLS policies, indexes, triggers, and `generate_certificate_number()` function.
+- **Server actions** (3 new files, ~1,570 lines):
+  - `courses.ts` — CourseRow/ModuleRow/LessonRow types, getCourses, getCourseById, getCourseBySlug, getCourseWithContent, createCourse (FormData), updateCourse, toggleCoursePublished, createModule, updateModule, deleteModule, createLesson, updateLesson, deleteLesson
+  - `progress.ts` — CourseEnrollmentRow/LessonProgressRow/QuizAttemptRow/QuizRow/QuizQuestionRow/CertificateRow types, enrollStudentInCourse, startLesson, completeLesson, recalculateCourseProgress, startQuizAttempt, submitQuizAttempt (auto-grades MC/TF/short_answer, flags essay for manual grading), issueCertificate
+  - `quizzes.ts` — createQuiz, updateQuiz, deleteQuiz, addQuestion, updateQuestion, deleteQuestion (admin-only)
+- **Feature flags**: lmsEnabled, aiCourseCreator, certificates, quizzes added to TenantConfig
+- **Sidebar navigation**: Courses + Certificates added for admin, teacher, and student roles
+- **Admin pages** (5 new routes):
+  - `/admin/courses` — Course list table with difficulty badges, status, enrollment counts
+  - `/admin/courses/new` — Create course form (title, description, category, difficulty, pricing, learning objectives)
+  - `/admin/courses/[courseId]` — Course detail + builder: add/remove modules and lessons, publish/unpublish, content type badges
+  - `/admin/certificates` — Certificate management (placeholder)
+- **Student pages** (3 new routes):
+  - `/student/courses` — Enrolled courses grid with progress bars
+  - `/student/courses/[courseId]` — Course player: lesson sidebar navigation, content rendering (text/video/document/embed), mark-complete, next lesson
+  - `/student/certificates` — Earned certificates with verification codes, certificate numbers, PDF download
+- **Teacher pages** (2 new routes):
+  - `/teacher/courses` — Assigned courses grid with student counts
+  - `/teacher/courses/[courseId]` — Course detail: info cards (students, modules, lessons, difficulty), content tree, student progress placeholder
+- All loading skeletons for every page
 
 ### In Progress
 - None
 
 ### Next
-- Phase 11: Core LMS features — see `docs/phase-11-12-plan.md`
-  - 9 new tables (courses, modules, lessons, quizzes, quiz_questions, course_enrollments, lesson_progress, quiz_attempts, certificates)
-  - ~14 new routes (admin course builder, student course player, teacher grading)
-  - ~41 new files
 - Phase 12: AI Course Creator — see `docs/phase-11-12-plan.md`
   - Claude API-powered SME interview → automatic course generation
   - 1 new table (ai_course_interviews), 3 new routes, ~16 new files
+- LMS migration needs to be applied to Supabase project
 
 ### Blockers / Decisions Pending
 - simplilms.com domain registration needed
 - First tenant (COIN Education) needs to be configured as a deployment
+- LMS migration (`20260316000001_lms_tables.sql`) needs to be applied to Supabase
