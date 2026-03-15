@@ -62,22 +62,40 @@ function mapRowToConfig(
     id: row.id as string,
     name,
     shortName: buildShortName(name),
-    description: `Admissions and enrollment for ${name}`,
+    description:
+      (row.description as string) ||
+      process.env.NEXT_PUBLIC_PORTAL_DESCRIPTION ||
+      `Admissions and enrollment for ${name}`,
 
-    // Contact info from env vars (not stored in tenants table)
+    // Contact info from DB, falling back to env vars
     email:
-      process.env.NEXT_PUBLIC_CONTACT_EMAIL || "admissions@example.com",
-    phone: process.env.NEXT_PUBLIC_CONTACT_PHONE || "",
-    websiteUrl: process.env.NEXT_PUBLIC_WEBSITE_URL || "",
-    location: process.env.NEXT_PUBLIC_LOCATION || "",
-    trademark: process.env.NEXT_PUBLIC_TRADEMARK || undefined,
+      (row.contact_email as string) ||
+      process.env.NEXT_PUBLIC_CONTACT_EMAIL ||
+      "admissions@example.com",
+    phone:
+      (row.contact_phone as string) ||
+      process.env.NEXT_PUBLIC_CONTACT_PHONE ||
+      "",
+    websiteUrl:
+      (row.website_url as string) ||
+      process.env.NEXT_PUBLIC_WEBSITE_URL ||
+      "",
+    location:
+      (row.location as string) ||
+      process.env.NEXT_PUBLIC_LOCATION ||
+      "",
+    trademark:
+      (row.trademark as string) ||
+      process.env.NEXT_PUBLIC_TRADEMARK ||
+      undefined,
 
     // Branding from tenant row
     logoUrl: (row.logo_url as string) || null,
-    logoFallbackLetter: name.charAt(0).toUpperCase(),
+    logoFallbackLetter:
+      (row.logo_fallback_letter as string) || name.charAt(0).toUpperCase(),
     primaryColor: (row.primary_color as string) || "#F26822",
     secondaryColor: (row.secondary_color as string) || "#FFCE38",
-    accentColor: "#FAA62E",
+    accentColor: (row.accent_color as string) || "#FAA62E",
 
     // Features
     features: {
