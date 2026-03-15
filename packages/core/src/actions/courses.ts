@@ -83,6 +83,22 @@ export async function getCourses(): Promise<CourseRow[]> {
   return (data || []) as CourseRow[];
 }
 
+export async function getPublishedCourses(): Promise<CourseRow[]> {
+  const supabase = await createServerClient();
+  const { data, error } = await (supabase as any)
+    .from("courses")
+    .select("*")
+    .eq("is_published", true)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching published courses:", error);
+    return [];
+  }
+  return (data || []) as CourseRow[];
+}
+
 export async function getCourseById(
   id: string
 ): Promise<CourseRow | null> {

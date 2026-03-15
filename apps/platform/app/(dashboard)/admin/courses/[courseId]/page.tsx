@@ -11,7 +11,7 @@ import {
 } from "@simplilms/core/actions/courses";
 import { getCourseEnrollmentCount } from "@simplilms/core/actions/progress";
 import { Badge, Button } from "@simplilms/ui";
-import { ArrowLeft, Pencil, Users } from "lucide-react";
+import { ArrowLeft, HelpCircle, Pencil, Users } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CourseBuilderClient } from "./builder";
@@ -102,6 +102,12 @@ export default async function CourseDetailPage({
           )}
         </div>
         <div className="flex items-center gap-2">
+          <Link href={`/admin/courses/${courseId}/quizzes`}>
+            <Button variant="outline" size="sm">
+              <HelpCircle className="h-4 w-4 mr-2" />
+              Quizzes
+            </Button>
+          </Link>
           <Link href={`/admin/courses/${courseId}/students`}>
             <Button variant="outline" size="sm">
               <Users className="h-4 w-4 mr-2" />
