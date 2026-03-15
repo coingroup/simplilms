@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getStripe } from "@simplilms/core/lib/stripe";
-import { getTenantId } from "@simplilms/core/lib/tenant";
+import { getTenantId, buildTenantContext } from "@simplilms/core/lib/tenant";
 import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
 
@@ -305,6 +305,7 @@ async function handleInstallment2Completed(
         event: "installment_2_completed",
         application_id: applicationId,
         user_id: userId,
+        tenant_context: buildTenantContext(),
       }),
     }).catch((err) =>
       console.error("Failed to fire installment 2 webhook:", err)
@@ -345,7 +346,7 @@ async function provisionStudentCredentials(
   const webhookUrl = process.env.N8N_WEBHOOK_ENROLLMENT_CONFIRMED;
   if (webhookUrl) {
     const portalUrl =
-      process.env.NEXT_PUBLIC_PORTAL_URL || "http://localhost:3002";
+      process.env.NEXT_PUBLIC_PORTAL_URL || "http://localhost:3000";
     fetch(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -360,6 +361,7 @@ async function provisionStudentCredentials(
         program_id: application?.program_id,
         temp_password: tempPassword,
         login_url: `${portalUrl}/login`,
+        tenant_context: buildTenantContext(),
       }),
     }).catch((err) =>
       console.error("Failed to fire enrollment webhook:", err)
@@ -424,6 +426,7 @@ async function handlePaymentFailed(
         payment_intent_id: paymentIntent.id,
         failure_message:
           paymentIntent.last_payment_error?.message || "Unknown error",
+        tenant_context: buildTenantContext(),
       }),
     }).catch((err) =>
       console.error("Failed to fire payment failure webhook:", err)

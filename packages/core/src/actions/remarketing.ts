@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createServerClient } from "@simplilms/auth/server";
 import { getUser } from "@simplilms/auth/server";
 import type { CommunicationChannel } from "@simplilms/database";
-import { getTenantWebsiteUrl } from "../lib/tenant";
+import { getTenantWebsiteUrl, buildTenantContext } from "../lib/tenant";
 
 export async function sendRemarketing(data: {
   prospectId: string;
@@ -110,6 +110,7 @@ export async function sendRemarketing(data: {
             },
             trackingId,
             channel: data.channel,
+            tenant_context: buildTenantContext(),
           }),
         });
       } catch (webhookError) {

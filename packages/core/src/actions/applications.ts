@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createServerClient } from "@simplilms/auth/server";
 import { getUser } from "@simplilms/auth/server";
 import { generatePaymentToken } from "../lib/payment";
+import { buildTenantContext } from "../lib/tenant";
 
 export async function approveApplication(
   applicationId: string
@@ -75,6 +76,7 @@ export async function approveApplication(
           phone: appData?.phone,
           program_id: appData?.program_id,
           payment_url: paymentUrl,
+          tenant_context: buildTenantContext(),
         }),
       }).catch((err) =>
         console.error("Failed to fire n8n approval webhook:", err)

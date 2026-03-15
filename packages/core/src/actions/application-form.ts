@@ -10,7 +10,7 @@ import {
   MAX_FILE_SIZE_BYTES,
   ACCEPTED_FILE_TYPES,
 } from "../lib/citizenship";
-import { getTenantId } from "../lib/tenant";
+import { getTenantId, buildTenantContext } from "../lib/tenant";
 
 // ============================================================
 // Save Draft
@@ -176,6 +176,7 @@ export async function submitApplication(
           email: validated.data.email,
           first_name: validated.data.first_name,
           last_name: validated.data.last_name,
+          tenant_context: buildTenantContext(),
         }),
       }).catch((err) =>
         console.error("Failed to trigger n8n webhook:", err)
