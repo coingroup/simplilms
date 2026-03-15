@@ -105,7 +105,7 @@ npx turbo dev         # Dev server (platform: 3000, marketing: 3001)
 
 ## Current State
 
-**Last updated:** 2026-03-16
+**Last updated:** 2026-03-15
 
 ### Completed
 - Turborepo monorepo with 5 packages and 2 apps
@@ -122,13 +122,23 @@ npx turbo dev         # Dev server (platform: 3000, marketing: 3001)
   - Tenant-dynamic branding (TenantProvider + ThemeInjector)
   - **Tenant admin panel** (list, create, detail/edit) — super_admin only
   - **Core LMS** (Phase 11) — see below
-- `apps/marketing` — SimpliLMS landing page + pricing page
-  - Landing: hero, features grid, how-it-works, social proof, CTA
-  - Pricing: 3 tiers (Starter $99, Professional $299, Enterprise $999)
+- `apps/marketing` — SimpliLMS landing page + pricing page + **industry pages**
+  - Landing: hero, features grid, **industry grid**, how-it-works, social proof, CTA
+  - Pricing: 3 tiers (Starter $99, Professional $299, Enterprise $999) + **sector module add-ons**
+  - **Industries hub page** (`/industries`) — 8 sector cards with icons, pricing, links
+  - **8 sector landing pages** (`/industries/[slug]`) — full marketing pages per sector:
+    - Real Estate ($149/mo), Insurance ($149/mo), Healthcare ($199/mo), CDL Trucking ($149/mo)
+    - Cosmetology ($99/mo), IT/Tech ($99/mo), Corporate Compliance ($149/mo), Government ($199/mo)
+  - Each sector page includes: pain points, features, AI capabilities, compliance docs, regulators, question bank size, platform features, pricing CTA, cross-links to other sectors
+  - Shared Header and Footer components (extracted from inline)
+  - Marketing site now: 14 statically generated pages
 - `packages/core` — 60+ shared files (7 lib, 13 actions, 40 components)
   - Tenant server actions: CRUD for whitelabel_tenants table
   - `buildTenantContext()` added to all n8n webhook payloads
   - **LMS actions**: courses.ts, progress.ts, quizzes.ts (Course/Module/Lesson CRUD, progress tracking, quiz auto-grading, certificates)
+  - **Sector module feature flags**: 8 new flags in TenantConfig (sectorRealEstate, sectorInsurance, sectorHealthcare, sectorCdlTrucking, sectorCosmetology, sectorItTech, sectorCorporateCompliance, sectorGovernment)
+  - `activeSectors` derived array in TenantConfig
+  - `deriveActiveSectors()` helper in load-tenant-config
 - `packages/ui` — 18 shadcn/ui components
 - `packages/database` — Typed Supabase client
 - `packages/auth` — Supabase Auth with role-based helpers
@@ -138,7 +148,8 @@ npx turbo dev         # Dev server (platform: 3000, marketing: 3001)
   - `provision-tenant.ts` — Interactive script: generates .env + seed.sql
   - `apply-migrations.ts` — Applies migrations to new Supabase projects
   - `templates/tenant-seed.sql` — Parameterized seed template
-- Build verified: `turbo build` passes for all apps (marketing: 3 routes, platform: 43 routes)
+- `docs/sector-strategy.md` — Full sector strategy document with architecture, revenue model ($681M TAM), market sizing per sector, regulatory compliance approach, and implementation roadmap
+- Build verified: `turbo build` passes for all apps (marketing: 14 pages, platform: 43 routes)
 
 #### Phase 11: Core LMS (Completed)
 - **Database migration** (`20260316000001_lms_tables.sql`): 9 new tables — courses, modules, lessons, quizzes, quiz_questions, course_enrollments, lesson_progress, quiz_attempts, certificates. Full RLS policies, indexes, triggers, and `generate_certificate_number()` function.
@@ -162,13 +173,27 @@ npx turbo dev         # Dev server (platform: 3000, marketing: 3001)
   - `/teacher/courses/[courseId]` — Course detail: info cards (students, modules, lessons, difficulty), content tree, student progress placeholder
 - All loading skeletons for every page
 
+#### Sector Module Strategy (Completed — Marketing & Architecture)
+- **Strategy document**: `docs/sector-strategy.md` — architecture, revenue model, competitive analysis, market sizing
+- **8 target sectors**: Real Estate, Insurance, Healthcare, CDL Trucking, Cosmetology, IT/Tech, Corporate Compliance, Government
+- **Pricing model**: $99-199/mo per sector module add-on (on top of Professional $299 or Enterprise $999)
+- **Revenue projections**: Conservative Year 2 ARR ~$796K, Aggressive ~$2.5M
+- **TAM**: $681M across all sectors (79,000+ potential customers)
+- **Key differentiator**: Only platform combining admissions + enrollment + payments + LMS + AI course creation + regulatory compliance documentation
+- **TenantConfig updated**: 8 sector feature flags + activeSectors array
+- **Marketing pages**: 8 sector landing pages + hub page + updated pricing + updated home page
+- **Regulatory bodies covered**: TWC, GNPEC, BPPE, SCHEV, ACCSC, COE, DEAC, FMCSA, state DOI, nursing boards, cosmetology boards, OPM, and more
+
 ### In Progress
 - None
 
 ### Next
 - Phase 12: AI Course Creator — see `docs/phase-11-12-plan.md`
   - Claude API-powered SME interview → automatic course generation
+  - Sector-specific AI prompts (tuned to each sector module's regulations)
   - 1 new table (ai_course_interviews), 3 new routes, ~16 new files
+- Sector module database tables: `sector_modules`, `tenant_sector_subscriptions`, `sector_question_banks`
+- Sector module content: AI system prompts, curriculum frameworks, question banks per sector
 - LMS migration needs to be applied to Supabase project
 
 ### Blockers / Decisions Pending
