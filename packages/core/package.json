@@ -7,16 +7,28 @@
   "exports": {
     ".": "./src/index.ts",
     "./components/*": "./src/components/*.tsx",
+    "./components/ai-course/*": "./src/components/ai-course/*.tsx",
     "./lib/*": "./src/lib/*.ts",
     "./actions/*": "./src/actions/*.ts",
     "./context": "./src/context/index.ts"
   },
   "typesVersions": {
     "*": {
-      "components/*": ["./src/components/*.tsx"],
-      "lib/*": ["./src/lib/*.ts"],
-      "actions/*": ["./src/actions/*.ts"],
-      "context": ["./src/context/index.ts"]
+      "components/*": [
+        "./src/components/*.tsx"
+      ],
+      "components/ai-course/*": [
+        "./src/components/ai-course/*.tsx"
+      ],
+      "lib/*": [
+        "./src/lib/*.ts"
+      ],
+      "actions/*": [
+        "./src/actions/*.ts"
+      ],
+      "context": [
+        "./src/context/index.ts"
+      ]
     }
   },
   "scripts": {
@@ -24,10 +36,11 @@
     "clean": "rm -rf dist node_modules .turbo"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.78.0",
+    "@hookform/resolvers": "^3.9.1",
     "@simplilms/auth": "*",
     "@simplilms/database": "*",
     "@simplilms/ui": "*",
-    "@hookform/resolvers": "^3.9.1",
     "@stripe/stripe-js": "^8.9.0",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.47.0",
