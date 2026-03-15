@@ -1,5 +1,9 @@
 import { requireRole } from "@simplilms/auth/server";
 import { InterviewStartForm } from "@simplilms/core/components/ai-course/interview-start-form";
+import {
+  getSectorModules,
+  getTenantSectorSubscriptions,
+} from "@simplilms/core/actions/sector-modules";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import Link from "next/link";
 
@@ -14,6 +18,30 @@ export default async function NewAiCoursePage() {
     "teacher_paid",
     "teacher_unpaid",
   ]);
+
+  // Build dynamic sector options from tenant subscriptions
+  let sectorOptions: { value: string; label: string }[] | undefined;
+  try {
+    const [modules, subs] = await Promise.all([
+      getSectorModules(),
+      getTenantSectorSubscriptions(),
+    ]);
+
+    const activeModuleIds = new Set(subs.map((s) => s.sector_module_id));
+    const activeModules = modules.filter((m) => activeModuleIds.has(m.id));
+
+    if (activeModules.length > 0) {
+      sectorOptions = [
+        { value: "", label: "Generic (No specific sector)" },
+        ...activeModules.map((m) => ({
+          value: m.sector_key,
+          label: m.display_name,
+        })),
+      ];
+    }
+  } catch {
+    // If sector tables don't exist yet, fall back to defaults
+  }
 
   return (
     <div className="space-y-6">
@@ -52,7 +80,7 @@ export default async function NewAiCoursePage() {
       </div>
 
       {/* Form */}
-      <InterviewStartForm />
+      <InterviewStartForm sectorOptions={sectorOptions} />
     </div>
   );
 }
