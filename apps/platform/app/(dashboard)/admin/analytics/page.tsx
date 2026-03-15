@@ -1,116 +1,191 @@
 import { requireRole } from "@simplilms/auth/server";
-import { Card, CardContent, CardHeader, CardTitle } from "@simplilms/ui";
-import { BarChart3, Users, GraduationCap, BookOpen, DollarSign } from "lucide-react";
-import { createServerClient } from "@simplilms/auth/server";
+import {
+  getAnalyticsOverview,
+  getEnrollmentTrends,
+  getCoursePerformance,
+  getQuizPerformance,
+  getAtRiskStudents,
+  getRevenueByMonth,
+  getAnalyticsExportData,
+} from "@simplilms/core/actions/analytics";
+import {
+  Users,
+  BookOpen,
+  GraduationCap,
+  DollarSign,
+  TrendingUp,
+  Target,
+  Award,
+  CheckSquare,
+} from "lucide-react";
+import { StatCard } from "./components/stat-card";
+import { MiniChart } from "./components/mini-chart";
+import { RevenueChart } from "./components/revenue-chart";
+import { CoursePerformanceTable } from "./components/course-performance-table";
+import { QuizPerformanceTable } from "./components/quiz-performance-table";
+import { AtRiskTable } from "./components/at-risk-table";
+import { ExportButton } from "./components/export-button";
 
 export const metadata = {
-  title: "Analytics -- Admin",
+  title: "Analytics — Admin",
 };
+
+function formatCurrency(cents: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(cents / 100);
+}
+
+function formatDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
 
 export default async function AdminAnalyticsPage() {
   await requireRole(["super_admin"]);
 
-  const supabase = await createServerClient();
+  // Fetch all analytics data in parallel
+  const [overview, enrollmentTrends, coursePerformance, quizPerformance, atRiskStudents, revenueData] =
+    await Promise.all([
+      getAnalyticsOverview(),
+      getEnrollmentTrends(30),
+      getCoursePerformance(),
+      getQuizPerformance(),
+      getAtRiskStudents(),
+      getRevenueByMonth(12),
+    ]);
 
-  // Fetch counts in parallel
-  const [
-    { count: studentCount },
-    { count: courseCount },
-    { count: enrollmentCount },
-    { count: instructorCount },
-  ] = await Promise.all([
-    (supabase as any)
-      .from("profiles")
-      .select("id", { count: "exact", head: true })
-      .eq("role", "student"),
-    (supabase as any)
-      .from("courses")
-      .select("id", { count: "exact", head: true })
-      .eq("is_published", true),
-    (supabase as any)
-      .from("course_enrollments")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "active"),
-    (supabase as any)
-      .from("profiles")
-      .select("id", { count: "exact", head: true })
-      .in("role", ["teacher_paid", "teacher_unpaid"]),
-  ]);
-
-  const stats = [
-    {
-      label: "Total Students",
-      value: studentCount || 0,
-      icon: Users,
-      color: "text-blue-600",
-      bg: "bg-blue-50",
-    },
-    {
-      label: "Published Courses",
-      value: courseCount || 0,
-      icon: BookOpen,
-      color: "text-green-600",
-      bg: "bg-green-50",
-    },
-    {
-      label: "Active Enrollments",
-      value: enrollmentCount || 0,
-      icon: GraduationCap,
-      color: "text-purple-600",
-      bg: "bg-purple-50",
-    },
-    {
-      label: "Instructors",
-      value: instructorCount || 0,
-      icon: Users,
-      color: "text-orange-600",
-      bg: "bg-orange-50",
-    },
-  ];
+  // Bound export action
+  const boundExport = async (type: string) => {
+    "use server";
+    return getAnalyticsExportData(type as "students" | "courses" | "quizzes" | "revenue");
+  };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Platform overview and key metrics.
-        </p>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
-          <Card key={stat.label}>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className={`p-3 rounded-lg ${stat.bg}`}>
-                  <stat.icon className={`h-5 w-5 ${stat.color}`} />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {stat.value}
-                  </p>
-                  <p className="text-xs text-gray-500">{stat.label}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
-            Detailed Analytics
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-gray-500">
-            Detailed charts for enrollment trends, completion rates, revenue,
-            and quiz performance are coming in a future update.
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Platform performance, student engagement, and revenue insights.
           </p>
-        </CardContent>
-      </Card>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <ExportButton
+            exportAction={boundExport}
+            type="students"
+            label="Export Students"
+          />
+          <ExportButton
+            exportAction={boundExport}
+            type="courses"
+            label="Export Courses"
+          />
+          <ExportButton
+            exportAction={boundExport}
+            type="revenue"
+            label="Export Revenue"
+          />
+        </div>
+      </div>
+
+      {/* Overview Stats */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="Total Students"
+          value={overview.totalStudents}
+          icon={Users}
+          color="text-blue-600"
+          bg="bg-blue-50"
+        />
+        <StatCard
+          label="Published Courses"
+          value={overview.totalCourses}
+          icon={BookOpen}
+          color="text-green-600"
+          bg="bg-green-50"
+        />
+        <StatCard
+          label="Active Enrollments"
+          value={overview.activeEnrollments}
+          icon={GraduationCap}
+          color="text-purple-600"
+          bg="bg-purple-50"
+          subtitle={`${overview.completedEnrollments} completed`}
+        />
+        <StatCard
+          label="Total Revenue"
+          value={formatCurrency(overview.totalRevenueCents)}
+          icon={DollarSign}
+          color="text-emerald-600"
+          bg="bg-emerald-50"
+        />
+        <StatCard
+          label="Avg Completion Rate"
+          value={`${overview.avgCompletionRate}%`}
+          icon={TrendingUp}
+          color="text-amber-600"
+          bg="bg-amber-50"
+        />
+        <StatCard
+          label="Avg Quiz Score"
+          value={`${overview.avgQuizScore}%`}
+          icon={Target}
+          color="text-indigo-600"
+          bg="bg-indigo-50"
+        />
+        <StatCard
+          label="Lessons Completed"
+          value={overview.totalLessonsCompleted}
+          icon={CheckSquare}
+          color="text-cyan-600"
+          bg="bg-cyan-50"
+        />
+        <StatCard
+          label="At-Risk Students"
+          value={atRiskStudents.length}
+          icon={Award}
+          color={atRiskStudents.length > 0 ? "text-red-600" : "text-gray-600"}
+          bg={atRiskStudents.length > 0 ? "bg-red-50" : "bg-gray-50"}
+          subtitle={
+            atRiskStudents.length > 0
+              ? "Require attention"
+              : "All students on track"
+          }
+        />
+      </div>
+
+      {/* Charts Row */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <MiniChart
+          title="Enrollment Trend"
+          data={enrollmentTrends.map((t) => ({
+            label: t.date,
+            value: t.count,
+          }))}
+          icon={<TrendingUp className="h-5 w-5" />}
+          formatLabel={formatDate}
+          subtitle="Last 30 days"
+          color="bg-primary/70"
+        />
+        <RevenueChart
+          data={revenueData}
+          totalRevenueCents={overview.totalRevenueCents}
+        />
+      </div>
+
+      {/* Course Performance Table */}
+      <CoursePerformanceTable courses={coursePerformance} />
+
+      {/* Quiz Performance Table */}
+      <QuizPerformanceTable quizzes={quizPerformance} />
+
+      {/* At-Risk Students */}
+      <AtRiskTable students={atRiskStudents} />
     </div>
   );
 }
