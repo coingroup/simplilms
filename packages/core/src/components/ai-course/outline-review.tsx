@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Button,
@@ -22,8 +22,13 @@ import {
   Clock,
   BookOpen,
   ArrowLeft,
+  Plus,
+  Trash2,
+  Pencil,
+  X,
+  AlertCircle,
 } from "lucide-react";
-import type { GeneratedOutline } from "../../lib/ai-service";
+import type { GeneratedOutline, GeneratedModule } from "../../lib/ai-service";
 import {
   createCourseFromOutline,
   generateCourseFromInterview,
@@ -41,19 +46,155 @@ const DIFFICULTY_COLORS: Record<string, string> = {
   advanced: "bg-red-100 text-red-800 border-red-200",
 };
 
+function deepEqual(a: unknown, b: unknown): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
 export function OutlineReview({ interview }: OutlineReviewProps) {
   const router = useRouter();
-  const outline = interview.generated_outline;
+  const originalOutline = interview.generated_outline;
 
-  const [editedTitle, setEditedTitle] = useState(outline?.title || "");
-  const [editedDescription, setEditedDescription] = useState(
-    outline?.description || ""
+  // Full editable outline state
+  const [editedOutline, setEditedOutline] = useState<GeneratedOutline | null>(
+    originalOutline ? { ...originalOutline, modules: originalOutline.modules.map(m => ({ ...m, lessons: m.lessons.map(l => ({ ...l })) })) } : null
   );
   const [isCreating, startCreating] = useTransition();
   const [isRegenerating, startRegenerating] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  if (!outline) {
+  // Learning objective editing state
+  const [editingObjectiveIndex, setEditingObjectiveIndex] = useState<number | null>(null);
+  const [editingObjectiveValue, setEditingObjectiveValue] = useState("");
+
+  // Track whether changes have been made
+  const hasChanges = useMemo(() => {
+    if (!originalOutline || !editedOutline) return false;
+    return !deepEqual(originalOutline, editedOutline);
+  }, [originalOutline, editedOutline]);
+
+  // ---- Outline field updaters ----
+
+  const updateTitle = useCallback((title: string) => {
+    setEditedOutline(prev => prev ? { ...prev, title } : prev);
+  }, []);
+
+  const updateDescription = useCallback((description: string) => {
+    setEditedOutline(prev => prev ? { ...prev, description } : prev);
+  }, []);
+
+  // ---- Learning objective handlers ----
+
+  const startEditingObjective = useCallback((index: number, value: string) => {
+    setEditingObjectiveIndex(index);
+    setEditingObjectiveValue(value);
+  }, []);
+
+  const saveObjective = useCallback(() => {
+    if (editingObjectiveIndex === null) return;
+    setEditedOutline(prev => {
+      if (!prev) return prev;
+      const objectives = [...prev.learning_objectives];
+      objectives[editingObjectiveIndex] = editingObjectiveValue.trim();
+      return { ...prev, learning_objectives: objectives };
+    });
+    setEditingObjectiveIndex(null);
+    setEditingObjectiveValue("");
+  }, [editingObjectiveIndex, editingObjectiveValue]);
+
+  const cancelEditingObjective = useCallback(() => {
+    setEditingObjectiveIndex(null);
+    setEditingObjectiveValue("");
+  }, []);
+
+  const addObjective = useCallback(() => {
+    setEditedOutline(prev => {
+      if (!prev) return prev;
+      const objectives = [...prev.learning_objectives, "New learning objective"];
+      return { ...prev, learning_objectives: objectives };
+    });
+    // Start editing the newly added objective
+    setEditedOutline(prev => {
+      if (!prev) return prev;
+      const newIndex = prev.learning_objectives.length - 1;
+      setEditingObjectiveIndex(newIndex);
+      setEditingObjectiveValue(prev.learning_objectives[newIndex] || "New learning objective");
+      return prev;
+    });
+  }, []);
+
+  const removeObjective = useCallback((index: number) => {
+    setEditedOutline(prev => {
+      if (!prev) return prev;
+      const objectives = prev.learning_objectives.filter((_, i) => i !== index);
+      return { ...prev, learning_objectives: objectives };
+    });
+    if (editingObjectiveIndex === index) {
+      cancelEditingObjective();
+    }
+  }, [editingObjectiveIndex, cancelEditingObjective]);
+
+  // ---- Module handlers ----
+
+  const updateModule = useCallback((moduleIndex: number, updatedModule: GeneratedModule) => {
+    setEditedOutline(prev => {
+      if (!prev) return prev;
+      const modules = [...prev.modules];
+      modules[moduleIndex] = updatedModule;
+      return { ...prev, modules };
+    });
+  }, []);
+
+  const deleteModule = useCallback((moduleIndex: number) => {
+    setEditedOutline(prev => {
+      if (!prev) return prev;
+      const modules = prev.modules.filter((_, i) => i !== moduleIndex);
+      return { ...prev, modules };
+    });
+  }, []);
+
+  const moveModuleUp = useCallback((moduleIndex: number) => {
+    if (moduleIndex === 0) return;
+    setEditedOutline(prev => {
+      if (!prev) return prev;
+      const modules = [...prev.modules];
+      [modules[moduleIndex - 1], modules[moduleIndex]] = [modules[moduleIndex], modules[moduleIndex - 1]];
+      return { ...prev, modules };
+    });
+  }, []);
+
+  const moveModuleDown = useCallback((moduleIndex: number) => {
+    setEditedOutline(prev => {
+      if (!prev) return prev;
+      if (moduleIndex >= prev.modules.length - 1) return prev;
+      const modules = [...prev.modules];
+      [modules[moduleIndex], modules[moduleIndex + 1]] = [modules[moduleIndex + 1], modules[moduleIndex]];
+      return { ...prev, modules };
+    });
+  }, []);
+
+  const addModule = useCallback(() => {
+    setEditedOutline(prev => {
+      if (!prev) return prev;
+      const newModule: GeneratedModule = {
+        title: "New Module",
+        description: "Module description",
+        lessons: [
+          {
+            title: "New Lesson",
+            content_type: "text",
+            content: "<p>Lesson content goes here.</p>",
+            duration_minutes: 15,
+            quiz_questions: [],
+          },
+        ],
+      };
+      return { ...prev, modules: [...prev.modules, newModule] };
+    });
+  }, []);
+
+  // ---- No outline state ----
+
+  if (!editedOutline) {
     return (
       <Card className="max-w-2xl mx-auto">
         <CardContent className="py-12 text-center">
@@ -74,12 +215,14 @@ export function OutlineReview({ interview }: OutlineReviewProps) {
     );
   }
 
-  const totalLessons = outline.modules.reduce(
+  // ---- Computed stats ----
+
+  const totalLessons = editedOutline.modules.reduce(
     (sum, mod) => sum + mod.lessons.length,
     0
   );
 
-  const totalQuizQuestions = outline.modules.reduce(
+  const totalQuizQuestions = editedOutline.modules.reduce(
     (sum, mod) =>
       sum +
       mod.lessons.reduce(
@@ -89,19 +232,15 @@ export function OutlineReview({ interview }: OutlineReviewProps) {
     0
   );
 
+  // ---- Action handlers ----
+
   function handleCreate() {
     setError(null);
-
-    const editedOutline: GeneratedOutline = {
-      ...outline!,
-      title: editedTitle || outline!.title,
-      description: editedDescription || outline!.description,
-    };
 
     startCreating(async () => {
       const result = await createCourseFromOutline(
         interview.id,
-        editedOutline
+        editedOutline!
       );
 
       if (result.error) {
@@ -131,11 +270,21 @@ export function OutlineReview({ interview }: OutlineReviewProps) {
   }
 
   const difficultyClass =
-    DIFFICULTY_COLORS[outline.difficulty] ||
+    DIFFICULTY_COLORS[editedOutline.difficulty] ||
     "bg-gray-100 text-gray-800 border-gray-200";
+
+  const isDisabled = isCreating || isRegenerating;
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
+      {/* Changes indicator */}
+      {hasChanges && (
+        <div className="flex items-center gap-2 rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-800">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>You have unsaved changes to the outline. These will be applied when you create the course.</span>
+        </div>
+      )}
+
       {/* Header */}
       <Card>
         <CardHeader>
@@ -153,10 +302,10 @@ export function OutlineReview({ interview }: OutlineReviewProps) {
               </Label>
               <Input
                 id="courseTitle"
-                value={editedTitle}
-                onChange={(e) => setEditedTitle(e.target.value)}
+                value={editedOutline.title}
+                onChange={(e) => updateTitle(e.target.value)}
                 className="text-lg font-semibold"
-                disabled={isCreating || isRegenerating}
+                disabled={isDisabled}
               />
             </div>
 
@@ -167,10 +316,10 @@ export function OutlineReview({ interview }: OutlineReviewProps) {
               </Label>
               <Textarea
                 id="courseDescription"
-                value={editedDescription}
-                onChange={(e) => setEditedDescription(e.target.value)}
+                value={editedOutline.description}
+                onChange={(e) => updateDescription(e.target.value)}
                 rows={3}
-                disabled={isCreating || isRegenerating}
+                disabled={isDisabled}
               />
             </div>
           </div>
@@ -179,17 +328,17 @@ export function OutlineReview({ interview }: OutlineReviewProps) {
           {/* Stats */}
           <div className="flex flex-wrap items-center gap-3">
             <Badge className={difficultyClass} variant="outline">
-              {outline.difficulty}
+              {editedOutline.difficulty}
             </Badge>
-            {outline.estimated_hours > 0 && (
+            {editedOutline.estimated_hours > 0 && (
               <div className="flex items-center gap-1 text-sm text-muted-foreground">
                 <Clock className="h-3.5 w-3.5" />
-                {outline.estimated_hours} hours
+                {editedOutline.estimated_hours} hours
               </div>
             )}
             <div className="flex items-center gap-1 text-sm text-muted-foreground">
               <BookOpen className="h-3.5 w-3.5" />
-              {outline.modules.length} modules, {totalLessons} lessons
+              {editedOutline.modules.length} modules, {totalLessons} lessons
             </div>
             {totalQuizQuestions > 0 && (
               <div className="text-sm text-muted-foreground">
@@ -201,39 +350,151 @@ export function OutlineReview({ interview }: OutlineReviewProps) {
       </Card>
 
       {/* Learning Objectives */}
-      {outline.learning_objectives &&
-        outline.learning_objectives.length > 0 && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold">
-                Learning Objectives
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <ul className="space-y-2">
-                {outline.learning_objectives.map((objective, index) => (
-                  <li key={index} className="flex items-start gap-2 text-sm">
-                    <Check className="h-4 w-4 shrink-0 mt-0.5 text-green-600" />
-                    <span>{objective}</span>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-        )}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-semibold">
+              Learning Objectives
+            </CardTitle>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={addObjective}
+              disabled={isDisabled}
+            >
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              Add
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {editedOutline.learning_objectives.length === 0 ? (
+            <p className="text-sm text-muted-foreground italic">
+              No learning objectives. Click "Add" to create one.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {editedOutline.learning_objectives.map((objective, index) => (
+                <li key={index} className="flex items-start gap-2 text-sm group">
+                  <Check className="h-4 w-4 shrink-0 mt-0.5 text-green-600" />
+                  {editingObjectiveIndex === index ? (
+                    <div className="flex-1 flex items-center gap-1.5">
+                      <Input
+                        value={editingObjectiveValue}
+                        onChange={(e) => setEditingObjectiveValue(e.target.value)}
+                        className="h-7 text-sm flex-1"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            saveObjective();
+                          }
+                          if (e.key === "Escape") {
+                            cancelEditingObjective();
+                          }
+                        }}
+                        disabled={isDisabled}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 shrink-0"
+                        onClick={saveObjective}
+                        disabled={isDisabled}
+                      >
+                        <Check className="h-3.5 w-3.5 text-green-600" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 shrink-0"
+                        onClick={cancelEditingObjective}
+                      >
+                        <X className="h-3.5 w-3.5 text-muted-foreground" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex items-start justify-between gap-2">
+                      <span
+                        className="cursor-pointer hover:text-foreground/80 flex-1"
+                        onClick={() => !isDisabled && startEditingObjective(index, objective)}
+                        title="Click to edit"
+                      >
+                        {objective}
+                      </span>
+                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => startEditingObjective(index, objective)}
+                          disabled={isDisabled}
+                        >
+                          <Pencil className="h-3 w-3 text-muted-foreground" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => removeObjective(index)}
+                          disabled={isDisabled}
+                        >
+                          <Trash2 className="h-3 w-3 text-red-500" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Modules */}
       <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-          Course Modules
-        </h3>
-        {outline.modules.map((module, index) => (
-          <OutlineModuleCard
-            key={index}
-            module={module}
-            moduleIndex={index}
-          />
-        ))}
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+            Course Modules
+          </h3>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs"
+            onClick={addModule}
+            disabled={isDisabled}
+          >
+            <Plus className="h-3.5 w-3.5 mr-1" />
+            Add Module
+          </Button>
+        </div>
+        {editedOutline.modules.length === 0 ? (
+          <Card>
+            <CardContent className="py-8 text-center">
+              <p className="text-sm text-muted-foreground">
+                No modules. Click "Add Module" to create one.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          editedOutline.modules.map((module, index) => (
+            <OutlineModuleCard
+              key={index}
+              module={module}
+              moduleIndex={index}
+              onUpdate={(moduleIndex, updatedModule) =>
+                updateModule(moduleIndex, updatedModule)
+              }
+              onDelete={(moduleIndex) => deleteModule(moduleIndex)}
+              onMoveUp={() => moveModuleUp(index)}
+              onMoveDown={() => moveModuleDown(index)}
+              isFirst={index === 0}
+              isLast={index === editedOutline.modules.length - 1}
+              disabled={isDisabled}
+            />
+          ))
+        )}
       </div>
 
       {/* Error */}
@@ -249,7 +510,7 @@ export function OutlineReview({ interview }: OutlineReviewProps) {
         <Button
           variant="outline"
           onClick={handleRegenerate}
-          disabled={isCreating || isRegenerating}
+          disabled={isDisabled}
         >
           {isRegenerating ? (
             <>
@@ -265,7 +526,7 @@ export function OutlineReview({ interview }: OutlineReviewProps) {
         </Button>
         <Button
           onClick={handleCreate}
-          disabled={isCreating || isRegenerating}
+          disabled={isDisabled}
           size="lg"
         >
           {isCreating ? (

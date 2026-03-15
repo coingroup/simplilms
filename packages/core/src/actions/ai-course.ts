@@ -17,6 +17,10 @@ import {
   type ChatMessage,
   type GeneratedOutline,
 } from "../lib/ai-service";
+import {
+  extractTextFromFile,
+  MAX_DOCUMENT_SIZE_BYTES,
+} from "../lib/document-parser";
 
 // ============================================================
 // Types
@@ -704,6 +708,9 @@ export async function addDocumentToInterview(
   formData: FormData
 ): Promise<{
   success: boolean;
+  documentName?: string;
+  charCount?: number;
+  pageCount?: number;
   error?: string;
 }> {
   const { user, error: authError } = await getUser();
@@ -712,8 +719,27 @@ export async function addDocumentToInterview(
   const file = formData.get("file") as File;
   if (!file) return { success: false, error: "No file provided" };
 
-  // Simple text extraction — for MVP, handle text-based files
-  const text = await file.text();
+  // Validate file size
+  if (file.size > MAX_DOCUMENT_SIZE_BYTES) {
+    return {
+      success: false,
+      error: `File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum size is 20 MB.`,
+    };
+  }
+
+  // Extract text using document parser (supports PDF, DOCX, TXT, MD, CSV, HTML, JSON, XML)
+  const extraction = await extractTextFromFile(file);
+
+  if (extraction.error && !extraction.text) {
+    return { success: false, error: extraction.error };
+  }
+
+  if (!extraction.text || extraction.text.trim().length === 0) {
+    return {
+      success: false,
+      error: "No text could be extracted from the file. Please try a different format.",
+    };
+  }
 
   const supabase = await createServerClient();
   const { data: interview, error: fetchError } = await (supabase as any)
@@ -733,7 +759,9 @@ export async function addDocumentToInterview(
     {
       name: file.name,
       storage_path: `ai-documents/${interviewId}/${file.name}`,
-      content_text: text.slice(0, 100000), // Limit to ~100k chars
+      content_text: extraction.text,
+      page_count: extraction.pageCount || null,
+      char_count: extraction.text.length,
     },
   ];
 
@@ -747,7 +775,12 @@ export async function addDocumentToInterview(
   }
 
   revalidatePath(`/admin/courses/ai/${interviewId}`);
-  return { success: true };
+  return {
+    success: true,
+    documentName: file.name,
+    charCount: extraction.text.length,
+    pageCount: extraction.pageCount,
+  };
 }
 
 // ============================================================

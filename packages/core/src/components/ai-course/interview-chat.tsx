@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useTransition } from "react";
+import { useState, useRef, useEffect, useTransition, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Button,
@@ -11,7 +11,6 @@ import {
 import { Send, Bot, User, Loader2, Sparkles } from "lucide-react";
 import type { ChatMessage } from "../../lib/ai-service";
 import {
-  sendInterviewMessage,
   generateCourseFromInterview,
   type AiCourseInterviewRow,
 } from "../../actions/ai-course";
@@ -27,32 +26,42 @@ export function InterviewChat({ interview }: InterviewChatProps) {
   );
   const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [streamingText, setStreamingText] = useState("");
   const [readyToGenerate, setReadyToGenerate] = useState(false);
   const [isGenerating, startGenerating] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll to bottom when messages change or streaming text updates
   useEffect(() => {
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollTop =
         scrollContainerRef.current.scrollHeight;
     }
-  }, [messages, isLoading]);
+  }, [messages, isLoading, streamingText]);
 
   // Focus input on mount
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
-  async function handleSend() {
+  // Cleanup abort controller on unmount
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
+
+  const handleSend = useCallback(async () => {
     const trimmed = inputText.trim();
     if (!trimmed || isLoading) return;
 
     setError(null);
     setInputText("");
     setIsLoading(true);
+    setStreamingText("");
 
     // Optimistically add user message
     const userMessage: ChatMessage = {
@@ -62,33 +71,91 @@ export function InterviewChat({ interview }: InterviewChatProps) {
     };
     setMessages((prev) => [...prev, userMessage]);
 
-    try {
-      const result = await sendInterviewMessage(interview.id, trimmed);
+    // Abort any previous request
+    abortControllerRef.current?.abort();
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
 
-      if (result.error) {
-        setError(result.error);
+    try {
+      const response = await fetch("/api/ai/interview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          interviewId: interview.id,
+          userMessage: trimmed,
+        }),
+        signal: abortController.signal,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        setError(errorData.error || "Failed to send message");
         setIsLoading(false);
         return;
       }
 
-      // Add assistant response
-      const assistantMessage: ChatMessage = {
-        role: "assistant",
-        content: result.assistantMessage,
-        timestamp: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
+      if (!response.body) {
+        setError("Streaming not supported");
+        setIsLoading(false);
+        return;
+      }
 
-      if (result.readyToGenerate) {
-        setReadyToGenerate(true);
+      // Read the SSE stream
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // Process complete SSE events
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || ""; // Keep incomplete line in buffer
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+
+          try {
+            const data = JSON.parse(line.slice(6));
+
+            if (data.type === "token") {
+              setStreamingText((prev) => prev + data.text);
+            } else if (data.type === "done") {
+              // Finalize: add complete assistant message
+              const assistantMessage: ChatMessage = {
+                role: "assistant",
+                content: data.fullMessage,
+                timestamp: new Date().toISOString(),
+              };
+              setMessages((prev) => [...prev, assistantMessage]);
+              setStreamingText("");
+
+              if (data.readyToGenerate) {
+                setReadyToGenerate(true);
+              }
+            } else if (data.type === "error") {
+              setError(data.message);
+            }
+          } catch {
+            // Skip malformed JSON
+          }
+        }
       }
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        // Request was aborted, don't show error
+        return;
+      }
       setError("Failed to send message. Please try again.");
     } finally {
       setIsLoading(false);
+      setStreamingText("");
       inputRef.current?.focus();
     }
-  }
+  }, [inputText, isLoading, interview.id]);
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -189,8 +256,23 @@ export function InterviewChat({ interview }: InterviewChatProps) {
               </div>
             ))}
 
-            {/* Loading indicator */}
-            {isLoading && (
+            {/* Streaming assistant message */}
+            {streamingText && (
+              <div className="flex gap-3 justify-start">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                  <Bot className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div className="max-w-[80%] rounded-lg px-4 py-2.5 text-sm leading-relaxed bg-muted text-foreground">
+                  <div className="whitespace-pre-wrap">
+                    {streamingText}
+                    <span className="inline-block w-1.5 h-4 bg-muted-foreground/40 animate-pulse ml-0.5 -mb-0.5" />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Loading indicator (shown before streaming starts) */}
+            {isLoading && !streamingText && (
               <div className="flex gap-3 justify-start">
                 <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center">
                   <Bot className="h-4 w-4 text-muted-foreground" />
@@ -234,7 +316,7 @@ export function InterviewChat({ interview }: InterviewChatProps) {
               </Button>
             </div>
             <p className="text-[11px] text-muted-foreground mt-2">
-              Answer the AI interviewer's questions about your expertise. The more
+              Answer the AI interviewer&apos;s questions about your expertise. The more
               detail you provide, the better the generated course will be.
             </p>
           </div>
