@@ -59,6 +59,14 @@ export interface TenantConfig {
     zoomIntegration: boolean;
     /** Stripe Connect instructor marketplace */
     stripeConnect: boolean;
+    /** Core LMS module (courses, lessons, progress) */
+    lmsEnabled: boolean;
+    /** AI Course Creator (Phase 12) */
+    aiCourseCreator: boolean;
+    /** Certificate generation on course completion */
+    certificates: boolean;
+    /** Quiz engine */
+    quizzes: boolean;
   };
 
   /** ISA partner details (only if isaEnabled) */
