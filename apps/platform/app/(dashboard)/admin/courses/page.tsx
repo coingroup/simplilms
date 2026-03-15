@@ -3,7 +3,7 @@ import { formatDate } from "@simplilms/core";
 import { getCourses } from "@simplilms/core/actions/courses";
 import { getCourseEnrollmentCount } from "@simplilms/core/actions/progress";
 import { Badge } from "@simplilms/ui";
-import { BookOpen, Plus } from "lucide-react";
+import { BookOpen, Plus, Sparkles } from "lucide-react";
 import Link from "next/link";
 
 export const metadata = {
@@ -51,13 +51,22 @@ export default async function AdminCoursesPage() {
             {courses.length} course{courses.length !== 1 ? "s" : ""} managed
           </p>
         </div>
-        <Link
-          href="/admin/courses/new"
-          className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          Create Course
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/admin/courses/ai"
+            className="inline-flex items-center gap-2 rounded-md border border-primary bg-primary/5 px-4 py-2 text-sm font-medium text-primary shadow-sm hover:bg-primary/10 transition-colors"
+          >
+            <Sparkles className="h-4 w-4" />
+            Create with AI
+          </Link>
+          <Link
+            href="/admin/courses/new"
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            Create Course
+          </Link>
+        </div>
       </div>
 
       {/* Table */}
