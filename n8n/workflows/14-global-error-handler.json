@@ -1,0 +1,112 @@
+{
+  "name": "COIN Education — 14 — Global Error Handler",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "tags": [
+    { "name": "COIN Education" }
+  ],
+  "nodes": [
+    {
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "parameters": {}
+    },
+    {
+      "name": "Parse Error Details",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300],
+      "parameters": {
+        "jsCode": "// Extract error details from the error trigger\nconst errorData = $input.first().json;\n\nconst workflowName = errorData.workflow?.name || 'Unknown Workflow';\nconst workflowId = errorData.workflow?.id || 'unknown';\nconst errorMessage = errorData.execution?.error?.message || 'Unknown error';\nconst errorNode = errorData.execution?.error?.node?.name || 'Unknown node';\nconst executionId = errorData.execution?.id || 'unknown';\nconst timestamp = new Date().toLocaleString('en-US', {\n  timeZone: 'America/New_York',\n  dateStyle: 'medium',\n  timeStyle: 'medium'\n});\n\nreturn [{\n  json: {\n    workflow_name: workflowName,\n    workflow_id: workflowId,\n    error_message: errorMessage,\n    error_node: errorNode,\n    execution_id: executionId,\n    timestamp_est: timestamp,\n    source: 'n8n',\n    error_type: 'workflow_execution_error',\n    stack_trace: errorData.execution?.error?.stack || ''\n  }\n}];"
+      }
+    },
+    {
+      "name": "Log to Supabase error_log",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [710, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://lzegdrzoyyimfgwgqnlo.supabase.co/rest/v1/error_log",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  tenant_id: '00000000-0000-0000-0000-000000000001',\n  source: $json.source,\n  error_type: $json.error_type,\n  error_message: `[${$json.workflow_name}] ${$json.error_node}: ${$json.error_message}`,\n  stack_trace: $json.stack_trace,\n  context: {\n    workflow_id: $json.workflow_id,\n    workflow_name: $json.workflow_name,\n    execution_id: $json.execution_id,\n    error_node: $json.error_node\n  },\n  resolved: false\n}) }}"
+      }
+    },
+    {
+      "name": "Send Telegram Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 200],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  chat_id: $env.TELEGRAM_CHAT_ID,\n  parse_mode: 'HTML',\n  text: `🚨 <b>COIN Education — Workflow Error</b>\\n\\n` +\n    `<b>Workflow:</b> ${$json.workflow_name}\\n` +\n    `<b>Node:</b> ${$json.error_node}\\n` +\n    `<b>Error:</b> ${$json.error_message}\\n` +\n    `<b>Execution:</b> ${$json.execution_id}\\n` +\n    `<b>Time:</b> ${$json.timestamp_est} EST\\n\\n` +\n    `<a href=\"https://coingroup.app.n8n.cloud/execution/${$json.execution_id}\">View Execution →</a>`\n}) }}"
+      }
+    },
+    {
+      "name": "Send WhatsApp Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 420],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/{{ $env.TWILIO_ACCOUNT_SID }}/Messages.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "From", "value": "={{ $env.TWILIO_WHATSAPP_NUMBER }}" },
+            { "name": "To", "value": "={{ $env.ADMIN_WHATSAPP }}" },
+            { "name": "Body", "value": "=🚨 *COIN Education Error*\n\n*Workflow:* {{ $json.workflow_name }}\n*Node:* {{ $json.error_node }}\n*Error:* {{ $json.error_message }}\n*Time:* {{ $json.timestamp_est }} EST\n\nCheck n8n for details." }
+          ]
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [{ "node": "Parse Error Details", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse Error Details": {
+      "main": [
+        [{ "node": "Log to Supabase error_log", "type": "main", "index": 0 }]
+      ]
+    },
+    "Log to Supabase error_log": {
+      "main": [
+        [
+          { "node": "Send Telegram Alert", "type": "main", "index": 0 },
+          { "node": "Send WhatsApp Alert", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "pinData": {}
+}

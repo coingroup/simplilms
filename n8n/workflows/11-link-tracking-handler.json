@@ -1,0 +1,206 @@
+{
+  "name": "COIN Education — 11 — Link Tracking Handler",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "tags": [
+    { "name": "COIN Education" }
+  ],
+  "nodes": [
+    {
+      "name": "Webhook — Track Open",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 200],
+      "webhookId": "coin-track-open",
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "coin-track/open/:trackingId",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "name": "Webhook — Track Click",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 500],
+      "webhookId": "coin-track-click",
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "coin-track/click/:trackingId",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": false
+        }
+      }
+    },
+    {
+      "name": "Record Open",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 200],
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://lzegdrzoyyimfgwgqnlo.supabase.co/rest/v1/communication_log?tracking_id=eq.{{ $json.params.trackingId }}&opened_at=is.null",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ opened_at: new Date().toISOString() }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Respond — Tracking Pixel",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [780, 200],
+      "parameters": {
+        "respondWith": "binary",
+        "responseBody": "={{}}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "image/gif"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-cache, no-store, must-revalidate"
+              },
+              {
+                "name": "Pragma",
+                "value": "no-cache"
+              },
+              {
+                "name": "Expires",
+                "value": "0"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "Fetch Link URL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 500],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://lzegdrzoyyimfgwgqnlo.supabase.co/rest/v1/communication_log?tracking_id=eq.{{ $json.params.trackingId }}&select=link_url,tracking_id",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Record Click & Get Redirect",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [780, 500],
+      "parameters": {
+        "jsCode": "const records = $input.first().json;\nconst record = Array.isArray(records) ? records[0] : records;\nconst trackingId = $('Webhook — Track Click').first().json.params.trackingId;\n\n// Default redirect if no link_url found\nconst redirectUrl = record?.link_url || 'https://coineducation.com';\n\nreturn [{\n  json: {\n    tracking_id: trackingId,\n    redirect_url: redirectUrl\n  }\n}];"
+      }
+    },
+    {
+      "name": "Update Click Timestamp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1040, 400],
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://lzegdrzoyyimfgwgqnlo.supabase.co/rest/v1/communication_log?tracking_id=eq.{{ $json.tracking_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  clicked_at: new Date().toISOString(),\n  opened_at: new Date().toISOString()\n}) }}"
+      }
+    },
+    {
+      "name": "Respond — Redirect",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1040, 600],
+      "parameters": {
+        "respondWith": "noData",
+        "options": {
+          "responseCode": 302,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Location",
+                "value": "={{ $('Record Click & Get Redirect').first().json.redirect_url }}"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-cache, no-store"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook — Track Open": {
+      "main": [
+        [{ "node": "Record Open", "type": "main", "index": 0 }]
+      ]
+    },
+    "Record Open": {
+      "main": [
+        [{ "node": "Respond — Tracking Pixel", "type": "main", "index": 0 }]
+      ]
+    },
+    "Webhook — Track Click": {
+      "main": [
+        [{ "node": "Fetch Link URL", "type": "main", "index": 0 }]
+      ]
+    },
+    "Fetch Link URL": {
+      "main": [
+        [{ "node": "Record Click & Get Redirect", "type": "main", "index": 0 }]
+      ]
+    },
+    "Record Click & Get Redirect": {
+      "main": [
+        [
+          { "node": "Update Click Timestamp", "type": "main", "index": 0 },
+          { "node": "Respond — Redirect", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "pinData": {}
+}

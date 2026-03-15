@@ -1,0 +1,185 @@
+{
+  "name": "WF8 — Stripe Payment Webhook Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "coin-payment-events",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wf8-trigger",
+      "name": "Webhook — Payment Event",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse payment event from portal webhook handler\nconst body = $input.first().json.body || $input.first().json;\n\nconst event = body.event || 'unknown';\nconst applicationId = body.application_id || '';\nconst userId = body.user_id || '';\nconst firstName = body.first_name || '';\nconst lastName = body.last_name || '';\nconst email = body.email || '';\nconst phone = body.phone || '';\nconst programId = body.program_id || '';\nconst tempPassword = body.temp_password || '';\nconst loginUrl = body.login_url || 'https://portal.coineducation.com/login';\nconst paymentIntentId = body.payment_intent_id || '';\nconst failureMessage = body.failure_message || '';\n\nreturn [{\n  json: {\n    event,\n    applicationId,\n    userId,\n    firstName,\n    lastName,\n    email,\n    phone,\n    programId,\n    tempPassword,\n    loginUrl,\n    paymentIntentId,\n    failureMessage\n  }\n}];"
+      },
+      "id": "wf8-parse",
+      "name": "Parse Payment Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            { "outputIndex": 0, "value": "={{ $json.event }}", "value2": "enrollment_confirmed" },
+            { "outputIndex": 1, "value": "={{ $json.event }}", "value2": "payment_failed" },
+            { "outputIndex": 2, "value": "={{ $json.event }}", "value2": "installment_2_completed" }
+          ]
+        },
+        "fallbackOutput": "extra"
+      },
+      "id": "wf8-switch",
+      "name": "Switch — Event Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.brevo.com/v3/smtp/email",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "api-key", "value": "={{ $env.BREVO_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"sender\": { \"name\": \"COIN Education\", \"email\": \"admissions@coineducation.com\" },\n  \"to\": [{ \"email\": \"{{ $json.email }}\", \"name\": \"{{ $json.firstName }} {{ $json.lastName }}\" }],\n  \"subject\": \"Welcome to COIN Education — Your Portal Login\",\n  \"htmlContent\": \"<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'><div style='background: linear-gradient(135deg, #FFCE38, #FAA62E, #F26822); padding: 30px; text-align: center;'><h1 style='color: white; margin: 0;'>Welcome to COIN Education!</h1></div><div style='padding: 30px; background: #ffffff;'><p>Dear {{ $json.firstName }},</p><p>Congratulations! Your enrollment payment has been received and your student portal account is ready.</p><h3>Your Login Credentials</h3><p><strong>Email:</strong> {{ $json.email }}<br/><strong>Temporary Password:</strong> {{ $json.tempPassword }}</p><p><a href='{{ $json.loginUrl }}' style='display: inline-block; background: #F26822; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;'>Log In to Portal</a></p><p style='font-size: 12px; color: #666;'>Please change your password after your first login.</p></div><div style='padding: 20px; text-align: center; background: #f5f5f5; font-size: 12px; color: #999;'>COIN Education Services Center™ • Atlanta, GA</div></div>\"\n}"
+      },
+      "id": "wf8-enrollment-email",
+      "name": "Send Enrollment Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [900, 180]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/={{ $env.TWILIO_ACCOUNT_SID }}/Messages.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "From", "value": "={{ $env.TWILIO_PHONE_NUMBER }}" },
+            { "name": "To", "value": "={{ $json.phone }}" },
+            { "name": "Body", "value": "Welcome to COIN Education, {{ $json.firstName }}! Your enrollment is confirmed. Log in at {{ $json.loginUrl }} with your email and the temporary password sent to your inbox." }
+          ]
+        }
+      },
+      "id": "wf8-enrollment-sms",
+      "name": "Send Enrollment SMS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [900, 340]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"{{ $env.TELEGRAM_CHAT_ID }}\",\n  \"text\": \"🎓 NEW ENROLLMENT\\n\\nStudent: {{ $json.firstName }} {{ $json.lastName }}\\nEmail: {{ $json.email }}\\nApplication: {{ $json.applicationId }}\\n\\nPayment received and portal access granted.\",\n  \"parse_mode\": \"HTML\"\n}"
+      },
+      "id": "wf8-enrollment-telegram",
+      "name": "Telegram — Enrollment Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [900, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"{{ $env.TELEGRAM_CHAT_ID }}\",\n  \"text\": \"❌ PAYMENT FAILED\\n\\nApplication: {{ $json.applicationId }}\\nPayment Intent: {{ $json.paymentIntentId }}\\nReason: {{ $json.failureMessage }}\\n\\nAction required.\",\n  \"parse_mode\": \"HTML\"\n}"
+      },
+      "id": "wf8-failed-telegram",
+      "name": "Telegram — Payment Failed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [900, 700]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"{{ $env.TELEGRAM_CHAT_ID }}\",\n  \"text\": \"✅ INSTALLMENT 2 COMPLETED\\n\\nApplication: {{ $json.applicationId }}\\nUser: {{ $json.userId }}\\n\\nEnrollment now fully active.\",\n  \"parse_mode\": \"HTML\"\n}"
+      },
+      "id": "wf8-installment2-telegram",
+      "name": "Telegram — Installment 2 Done",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [900, 900]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"success\": true }",
+        "options": {}
+      },
+      "id": "wf8-respond",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1200, 300]
+    }
+  ],
+  "connections": {
+    "Webhook — Payment Event": {
+      "main": [[{ "node": "Parse Payment Event", "type": "main", "index": 0 }]]
+    },
+    "Parse Payment Event": {
+      "main": [[{ "node": "Switch — Event Type", "type": "main", "index": 0 }]]
+    },
+    "Switch — Event Type": {
+      "main": [
+        [
+          { "node": "Send Enrollment Email", "type": "main", "index": 0 },
+          { "node": "Send Enrollment SMS", "type": "main", "index": 0 },
+          { "node": "Telegram — Enrollment Alert", "type": "main", "index": 0 }
+        ],
+        [{ "node": "Telegram — Payment Failed", "type": "main", "index": 0 }],
+        [{ "node": "Telegram — Installment 2 Done", "type": "main", "index": 0 }],
+        [{ "node": "Respond Success", "type": "main", "index": 0 }]
+      ]
+    },
+    "Send Enrollment Email": {
+      "main": [[{ "node": "Respond Success", "type": "main", "index": 0 }]]
+    },
+    "Send Enrollment SMS": {
+      "main": [[{ "node": "Respond Success", "type": "main", "index": 0 }]]
+    },
+    "Telegram — Enrollment Alert": {
+      "main": [[{ "node": "Respond Success", "type": "main", "index": 0 }]]
+    },
+    "Telegram — Payment Failed": {
+      "main": [[{ "node": "Respond Success", "type": "main", "index": 0 }]]
+    },
+    "Telegram — Installment 2 Done": {
+      "main": [[{ "node": "Respond Success", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    { "name": "coin-education" },
+    { "name": "payments" }
+  ]
+}

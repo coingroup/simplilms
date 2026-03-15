@@ -1,0 +1,199 @@
+{
+  "name": "COIN Education — 3 — Discovery Call Rescheduling",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "tags": [
+    { "name": "COIN Education" }
+  ],
+  "nodes": [
+    {
+      "name": "Webhook — Reschedule Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "coin-reschedule",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "coin-reschedule",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "name": "Parse Reschedule Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300],
+      "parameters": {
+        "jsCode": "// Parse incoming reschedule request\n// Can come from WhatsApp reply or portal\nconst body = $input.first().json.body || $input.first().json;\n\nconst prospectEmail = body.prospect_email || body.email;\nconst newDateTime = body.new_start_time || body.new_date;\nconst reason = body.reason || '';\n\nif (!prospectEmail) {\n  throw new Error('Missing prospect email');\n}\n\nif (!newDateTime) {\n  throw new Error('Missing new date/time');\n}\n\nconst estDate = new Date(newDateTime).toLocaleString('en-US', {\n  timeZone: 'America/New_York',\n  weekday: 'long',\n  year: 'numeric',\n  month: 'long',\n  day: 'numeric',\n  hour: 'numeric',\n  minute: '2-digit',\n  hour12: true\n});\n\nreturn [{\n  json: {\n    prospect_email: prospectEmail,\n    new_date_iso: newDateTime,\n    new_date_est: estDate,\n    reason: reason\n  }\n}];"
+      }
+    },
+    {
+      "name": "Fetch Prospect from Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [710, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://lzegdrzoyyimfgwgqnlo.supabase.co/rest/v1/prospects?email=eq.{{ encodeURIComponent($json.prospect_email) }}&select=id,first_name,last_name,phone,program_interest,discovery_call_zoom_link,google_calendar_event_id",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Merge Prospect Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [940, 300],
+      "parameters": {
+        "jsCode": "const prospect = $input.first().json;\nconst reschedule = $('Parse Reschedule Data').first().json;\n\nif (!prospect || !prospect.id) {\n  throw new Error('Prospect not found for email: ' + reschedule.prospect_email);\n}\n\nreturn [{\n  json: {\n    prospect_id: prospect.id,\n    prospect_name: `${prospect.first_name} ${prospect.last_name}`,\n    prospect_phone: prospect.phone,\n    prospect_email: reschedule.prospect_email,\n    program_interest: prospect.program_interest,\n    old_zoom_link: prospect.discovery_call_zoom_link,\n    google_calendar_event_id: prospect.google_calendar_event_id,\n    new_date_iso: reschedule.new_date_iso,\n    new_date_est: reschedule.new_date_est,\n    reason: reschedule.reason\n  }\n}];"
+      }
+    },
+    {
+      "name": "Update Zoom Meeting",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1170, 180],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.zoom.us/v2/users/me/meetings",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.ZOOM_ACCESS_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  topic: `COIN Education Discovery Call (Rescheduled) — ${$json.prospect_name}`,\n  type: 2,\n  start_time: $json.new_date_iso,\n  duration: 30,\n  timezone: 'America/New_York',\n  settings: {\n    host_video: true,\n    participant_video: true,\n    join_before_host: false,\n    waiting_room: true\n  }\n}) }}"
+      }
+    },
+    {
+      "name": "Update Prospect Record",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1400, 180],
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://lzegdrzoyyimfgwgqnlo.supabase.co/rest/v1/prospects?id=eq.{{ $('Merge Prospect Data').first().json.prospect_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  discovery_call_date: $('Merge Prospect Data').first().json.new_date_iso,\n  discovery_call_zoom_link: $input.first().json.join_url\n}) }}"
+      }
+    },
+    {
+      "name": "Send SMS — Reschedule Confirmation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1630, 180],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/{{ $env.TWILIO_ACCOUNT_SID }}/Messages.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "From", "value": "={{ $env.TWILIO_PHONE_NUMBER }}" },
+            { "name": "To", "value": "={{ $('Merge Prospect Data').first().json.prospect_phone }}" },
+            { "name": "Body", "value": "=Hi {{ $('Merge Prospect Data').first().json.prospect_name }}! Your COIN Education discovery call has been rescheduled to {{ $('Merge Prospect Data').first().json.new_date_est }} EST. New Zoom link: {{ $('Update Zoom Meeting').first().json.join_url }} — See you then!" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Send WhatsApp — Rep Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1630, 420],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/{{ $env.TWILIO_ACCOUNT_SID }}/Messages.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "From", "value": "={{ $env.TWILIO_WHATSAPP_NUMBER }}" },
+            { "name": "To", "value": "={{ $env.SCHOOL_REP_WHATSAPP }}" },
+            { "name": "Body", "value": "=📅 *Discovery Call Rescheduled*\n\n*Name:* {{ $('Merge Prospect Data').first().json.prospect_name }}\n*New Date:* {{ $('Merge Prospect Data').first().json.new_date_est }} EST\n*Zoom:* {{ $('Update Zoom Meeting').first().json.join_url }}\n*Reason:* {{ $('Merge Prospect Data').first().json.reason || 'Not specified' }}" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Respond — Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1860, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  success: true,\n  message: 'Discovery call rescheduled successfully'\n}) }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook — Reschedule Request": {
+      "main": [
+        [{ "node": "Parse Reschedule Data", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse Reschedule Data": {
+      "main": [
+        [{ "node": "Fetch Prospect from Supabase", "type": "main", "index": 0 }]
+      ]
+    },
+    "Fetch Prospect from Supabase": {
+      "main": [
+        [{ "node": "Merge Prospect Data", "type": "main", "index": 0 }]
+      ]
+    },
+    "Merge Prospect Data": {
+      "main": [
+        [{ "node": "Update Zoom Meeting", "type": "main", "index": 0 }]
+      ]
+    },
+    "Update Zoom Meeting": {
+      "main": [
+        [{ "node": "Update Prospect Record", "type": "main", "index": 0 }]
+      ]
+    },
+    "Update Prospect Record": {
+      "main": [
+        [
+          { "node": "Send SMS — Reschedule Confirmation", "type": "main", "index": 0 },
+          { "node": "Send WhatsApp — Rep Notification", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Send SMS — Reschedule Confirmation": {
+      "main": [
+        [{ "node": "Respond — Success", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "pinData": {}
+}

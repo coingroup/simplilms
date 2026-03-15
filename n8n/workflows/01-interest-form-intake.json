@@ -1,0 +1,172 @@
+{
+  "name": "COIN Education — 1 — Interest Form Intake",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "tags": [
+    { "name": "COIN Education" }
+  ],
+  "nodes": [
+    {
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "coin-interest-form",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "coin-interest-form",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300],
+      "parameters": {
+        "jsCode": "// Validate required fields from webhook body\nconst body = $input.first().json.body || $input.first().json;\n\nconst required = ['first_name', 'last_name', 'email', 'program_interest'];\nconst missing = required.filter(f => !body[f] || String(body[f]).trim() === '');\n\nif (missing.length > 0) {\n  throw new Error(`Missing required fields: ${missing.join(', ')}`);\n}\n\n// Basic email validation\nconst emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\nif (!emailRegex.test(body.email)) {\n  throw new Error('Invalid email address');\n}\n\n// Normalize phone (strip non-digits, keep + prefix)\nlet phone = body.phone || '';\nif (phone) {\n  phone = phone.replace(/[^\\d+]/g, '');\n}\n\n// Build validated prospect object\nreturn [{\n  json: {\n    first_name: String(body.first_name).trim(),\n    last_name: String(body.last_name).trim(),\n    email: String(body.email).trim().toLowerCase(),\n    phone: phone,\n    program_interest: String(body.program_interest).trim(),\n    source: body.source || 'website',\n    inquiry_ip_address: body.ip_address || null,\n    inquiry_user_agent: body.user_agent || null,\n    inquiry_submitted_at: new Date().toISOString(),\n    tenant_id: '00000000-0000-0000-0000-000000000001',\n    eligibility_status: 'pending',\n    remarketing_eligible: true\n  }\n}];"
+      }
+    },
+    {
+      "name": "Store in Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [710, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://lzegdrzoyyimfgwgqnlo.supabase.co/rest/v1/prospects",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  tenant_id: $json.tenant_id,\n  first_name: $json.first_name,\n  last_name: $json.last_name,\n  email: $json.email,\n  phone: $json.phone,\n  program_interest: $json.program_interest,\n  source: $json.source,\n  inquiry_ip_address: $json.inquiry_ip_address,\n  inquiry_user_agent: $json.inquiry_user_agent,\n  inquiry_submitted_at: $json.inquiry_submitted_at,\n  eligibility_status: $json.eligibility_status,\n  remarketing_eligible: $json.remarketing_eligible\n}) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Extract Prospect ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [940, 300],
+      "parameters": {
+        "jsCode": "// Supabase returns an array with the created record\nconst response = $input.first().json;\nconst prospect = Array.isArray(response) ? response[0] : response;\n\n// Pass through all data plus the new prospect ID\nreturn [{\n  json: {\n    prospect_id: prospect.id,\n    first_name: prospect.first_name,\n    last_name: prospect.last_name,\n    email: prospect.email,\n    phone: prospect.phone,\n    program_interest: prospect.program_interest,\n    inquiry_submitted_at: prospect.inquiry_submitted_at\n  }\n}];"
+      }
+    },
+    {
+      "name": "Send Brevo Confirmation Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1170, 180],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.brevo.com/v3/smtp/email",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "api-key", "value": "={{ $env.BREVO_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  sender: {\n    name: 'COIN Education',\n    email: 'admissions@coineducation.com'\n  },\n  to: [{\n    email: $json.email,\n    name: $json.first_name\n  }],\n  subject: 'Thank you for your interest in COIN Education!',\n  htmlContent: `<!DOCTYPE html>\n<html>\n<head><style>\n  body { font-family: Arial, sans-serif; color: #1A1A1A; line-height: 1.6; }\n  .header { background: linear-gradient(135deg, #FFCE38, #FAA62E, #F26822); padding: 30px; text-align: center; }\n  .header h1 { color: white; margin: 0; font-size: 24px; }\n  .content { padding: 30px; max-width: 600px; margin: 0 auto; }\n  .cta { display: inline-block; background: #F26822; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; margin: 20px 0; }\n  .footer { background: #0D0D0D; color: #999; padding: 20px; text-align: center; font-size: 12px; }\n</style></head>\n<body>\n  <div class=\"header\"><h1>COIN Education™</h1></div>\n  <div class=\"content\">\n    <p>Dear ${$json.first_name},</p>\n    <p>Thank you for your interest in <strong>${$json.program_interest}</strong> at COIN Education Services Center!</p>\n    <p>We've received your inquiry and a member of our admissions team will be reaching out to you shortly to schedule a discovery call.</p>\n    <p>During the discovery call, we'll discuss:</p>\n    <ul>\n      <li>Your career goals and how our program aligns with them</li>\n      <li>Program curriculum, schedule, and duration</li>\n      <li>Tuition, payment options, and financial assistance</li>\n      <li>Next steps in the admissions process</li>\n    </ul>\n    <p>In the meantime, feel free to explore our website or reply to this email with any questions.</p>\n    <a href=\"https://coineducation.com\" class=\"cta\">Visit Our Website</a>\n    <p>We look forward to speaking with you!</p>\n    <p>Warm regards,<br><strong>COIN Education Admissions Team</strong><br>admissions@coineducation.com</p>\n  </div>\n  <div class=\"footer\">\n    <p>COIN Education Services Center™ | MBE/WBE Certified | Atlanta, GA</p>\n    <p>This email was sent because you submitted an interest form at coineducation.com</p>\n  </div>\n</body></html>`\n}) }}"
+      }
+    },
+    {
+      "name": "Send Telegram Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1170, 420],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  chat_id: $env.TELEGRAM_CHAT_ID,\n  parse_mode: 'HTML',\n  text: `🎓 <b>New COIN Education Inquiry</b>\\n\\n` +\n    `<b>Name:</b> ${$json.first_name} ${$json.last_name}\\n` +\n    `<b>Email:</b> ${$json.email}\\n` +\n    `<b>Phone:</b> ${$json.phone || 'Not provided'}\\n` +\n    `<b>Program:</b> ${$json.program_interest}\\n` +\n    `<b>Time:</b> ${new Date($json.inquiry_submitted_at).toLocaleString('en-US', { timeZone: 'America/New_York', dateStyle: 'medium', timeStyle: 'short' })} EST\\n\\n` +\n    `<i>Action needed: Schedule discovery call</i>`\n}) }}"
+      }
+    },
+    {
+      "name": "Respond — Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1400, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  success: true,\n  message: 'Interest form received successfully',\n  prospect_id: $('Extract Prospect ID').first().json.prospect_id\n}) }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "name": "Error Handler",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [710, 520],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  success: false,\n  error: 'Failed to process interest form submission'\n}) }}",
+        "options": {
+          "responseCode": 400
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [{ "node": "Validate Input", "type": "main", "index": 0 }]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [{ "node": "Store in Supabase", "type": "main", "index": 0 }]
+      ]
+    },
+    "Store in Supabase": {
+      "main": [
+        [{ "node": "Extract Prospect ID", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extract Prospect ID": {
+      "main": [
+        [
+          { "node": "Send Brevo Confirmation Email", "type": "main", "index": 0 },
+          { "node": "Send Telegram Alert", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Send Brevo Confirmation Email": {
+      "main": [
+        [{ "node": "Respond — Success", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "pinData": {}
+}

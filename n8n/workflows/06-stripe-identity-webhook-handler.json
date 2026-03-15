@@ -1,0 +1,94 @@
+{
+  "name": "COIN Education — 6 — Stripe Identity Webhook Handler",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "COIN Education — 14 — Global Error Handler"
+  },
+  "tags": [
+    { "name": "COIN Education" }
+  ],
+  "nodes": [
+    {
+      "name": "Note — Handled by Portal API",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [250, 100],
+      "parameters": {
+        "content": "## Stripe Identity Webhook\n\nThis workflow documents the Stripe Identity webhook handler.\n\n**The actual webhook is handled by the portal's API route:**\n`POST /api/stripe/identity-webhook`\n\nThe portal handles this directly because:\n1. Stripe webhooks require signature verification with the raw body\n2. The portal has direct database access for immediate updates\n3. Mismatch detection runs server-side with shared logic\n\n### Events Handled:\n- `identity.verification_session.verified` → Updates application, detects mismatches\n- `identity.verification_session.requires_input` → Updates status\n- `identity.verification_session.canceled` → Updates status\n\n### If you need n8n to also react to identity events:\nConfigure a second Stripe webhook endpoint pointing to n8n for notification-only purposes (e.g., send Telegram alert when verified).",
+        "width": 500,
+        "height": 400
+      }
+    },
+    {
+      "name": "Webhook — Identity Event (Optional)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 550],
+      "webhookId": "coin-identity-event",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "coin-identity-event",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "name": "Parse Identity Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 550],
+      "parameters": {
+        "jsCode": "// This is an optional secondary handler for identity events\n// The primary handler is the portal API route\nconst body = $input.first().json.body || $input.first().json;\n\nconst event_type = body.type;\nconst session = body.data?.object;\n\nif (!session) {\n  return [{ json: { skip: true, reason: 'No session data' } }];\n}\n\nconst applicationId = session.metadata?.application_id;\nconst status = session.status;\n\nreturn [{\n  json: {\n    event_type,\n    application_id: applicationId || 'unknown',\n    status: status || 'unknown',\n    session_id: session.id,\n    timestamp_est: new Date().toLocaleString('en-US', {\n      timeZone: 'America/New_York',\n      dateStyle: 'medium',\n      timeStyle: 'short'\n    })\n  }\n}];"
+      }
+    },
+    {
+      "name": "Send Telegram — KYC Update",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [740, 550],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  chat_id: $env.TELEGRAM_CHAT_ID,\n  parse_mode: 'HTML',\n  text: `🔐 <b>KYC Identity Update</b>\\n\\n` +\n    `<b>Event:</b> ${$json.event_type}\\n` +\n    `<b>Status:</b> ${$json.status}\\n` +\n    `<b>Application:</b> ${$json.application_id}\\n` +\n    `<b>Time:</b> ${$json.timestamp_est} EST`\n}) }}"
+      }
+    },
+    {
+      "name": "Respond — OK",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 550],
+      "parameters": {
+        "jsCode": "return [{ json: { received: true } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook — Identity Event (Optional)": {
+      "main": [
+        [{ "node": "Parse Identity Event", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse Identity Event": {
+      "main": [
+        [{ "node": "Send Telegram — KYC Update", "type": "main", "index": 0 }]
+      ]
+    },
+    "Send Telegram — KYC Update": {
+      "main": [
+        [{ "node": "Respond — OK", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "pinData": {}
+}

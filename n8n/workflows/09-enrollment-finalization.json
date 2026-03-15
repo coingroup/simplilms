@@ -1,0 +1,153 @@
+{
+  "name": "WF9 — Enrollment Finalization",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "coin-enrollment-confirmed",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wf9-trigger",
+      "name": "Webhook — Enrollment Confirmed",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 300],
+      "webhookId": "coin-enrollment-confirmed"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse enrollment confirmation from portal payment webhook\nconst body = $input.first().json.body || $input.first().json;\n\nconst event = body.event || 'enrollment_confirmed';\nconst applicationId = body.application_id || '';\nconst userId = body.user_id || '';\nconst firstName = body.first_name || '';\nconst lastName = body.last_name || '';\nconst email = body.email || '';\nconst phone = body.phone || '';\nconst programId = body.program_id || '';\nconst tempPassword = body.temp_password || '';\nconst loginUrl = body.login_url || 'https://portal.coineducation.com/login';\n\nreturn [{\n  json: {\n    event,\n    applicationId,\n    userId,\n    firstName,\n    lastName,\n    email,\n    phone,\n    programId,\n    tempPassword,\n    loginUrl\n  }\n}];"
+      },
+      "id": "wf9-parse",
+      "name": "Parse Enrollment Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.brevo.com/v3/smtp/email",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "api-key", "value": "={{ $env.BREVO_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"sender\": { \"name\": \"COIN Education\", \"email\": \"admissions@coineducation.com\" },\n  \"to\": [{ \"email\": \"{{ $json.email }}\", \"name\": \"{{ $json.firstName }} {{ $json.lastName }}\" }],\n  \"subject\": \"Enrollment Confirmed — Welcome to COIN Education!\",\n  \"htmlContent\": \"<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'><div style='background: linear-gradient(135deg, #FFCE38, #FAA62E, #F26822); padding: 30px; text-align: center;'><h1 style='color: white; margin: 0;'>Enrollment Confirmed!</h1></div><div style='padding: 30px; background: #ffffff;'><p>Dear {{ $json.firstName }},</p><p>Your enrollment at COIN Education has been confirmed. Your student portal account is ready.</p><h3>Login Information</h3><table style='width: 100%; border-collapse: collapse;'><tr><td style='padding: 8px 0; font-weight: bold;'>Email:</td><td>{{ $json.email }}</td></tr><tr><td style='padding: 8px 0; font-weight: bold;'>Temporary Password:</td><td style='font-family: monospace; background: #f5f5f5; padding: 4px 8px;'>{{ $json.tempPassword }}</td></tr></table><p style='margin-top: 20px;'><a href='{{ $json.loginUrl }}' style='display: inline-block; background: #F26822; color: white; padding: 14px 35px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;'>Log In to Your Portal</a></p><p style='font-size: 13px; color: #666; margin-top: 20px;'>Important: Please change your password after your first login for security.</p><h3>What's Next?</h3><ul><li>Log in to your Student Portal</li><li>Review your profile and update if needed</li><li>Check your program schedule</li><li>Reach out to admissions@coineducation.com with any questions</li></ul></div><div style='padding: 20px; text-align: center; background: #0D0D0D; color: #999; font-size: 12px;'>COIN Education Services Center™ • Atlanta, GA<br/>MBE/WBE Certified</div></div>\"\n}"
+      },
+      "id": "wf9-email",
+      "name": "Send Welcome Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [700, 180]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/={{ $env.TWILIO_ACCOUNT_SID }}/Messages.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "From", "value": "={{ $env.TWILIO_PHONE_NUMBER }}" },
+            { "name": "To", "value": "={{ $json.phone }}" },
+            { "name": "Body", "value": "🎓 Congratulations {{ $json.firstName }}! Your enrollment at COIN Education is confirmed. Check your email for login credentials. Portal: {{ $json.loginUrl }}" }
+          ]
+        }
+      },
+      "id": "wf9-sms",
+      "name": "Send Enrollment SMS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [700, 340]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/={{ $env.TWILIO_ACCOUNT_SID }}/Messages.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "From", "value": "={{ $env.TWILIO_WHATSAPP_NUMBER }}" },
+            { "name": "To", "value": "=whatsapp:{{ $env.ADMIN_WHATSAPP_NUMBER }}" },
+            { "name": "Body", "value": "🎓 NEW ENROLLMENT\n\nStudent: {{ $json.firstName }} {{ $json.lastName }}\nEmail: {{ $json.email }}\nPhone: {{ $json.phone }}\n\nPayment received, portal access granted." }
+          ]
+        }
+      },
+      "id": "wf9-whatsapp",
+      "name": "WhatsApp — Admin Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [700, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"{{ $env.TELEGRAM_CHAT_ID }}\",\n  \"text\": \"🎓 ENROLLMENT CONFIRMED\\n\\nStudent: {{ $json.firstName }} {{ $json.lastName }}\\nEmail: {{ $json.email }}\\nPhone: {{ $json.phone }}\\n\\nPortal access granted. Welcome email sent.\",\n  \"parse_mode\": \"HTML\"\n}"
+      },
+      "id": "wf9-telegram",
+      "name": "Telegram — Enrollment Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [700, 660]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"success\": true }",
+        "options": {}
+      },
+      "id": "wf9-respond",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1000, 300]
+    }
+  ],
+  "connections": {
+    "Webhook — Enrollment Confirmed": {
+      "main": [[{ "node": "Parse Enrollment Data", "type": "main", "index": 0 }]]
+    },
+    "Parse Enrollment Data": {
+      "main": [[
+        { "node": "Send Welcome Email", "type": "main", "index": 0 },
+        { "node": "Send Enrollment SMS", "type": "main", "index": 0 },
+        { "node": "WhatsApp — Admin Alert", "type": "main", "index": 0 },
+        { "node": "Telegram — Enrollment Alert", "type": "main", "index": 0 }
+      ]]
+    },
+    "Send Welcome Email": {
+      "main": [[{ "node": "Respond Success", "type": "main", "index": 0 }]]
+    },
+    "Send Enrollment SMS": {
+      "main": [[{ "node": "Respond Success", "type": "main", "index": 0 }]]
+    },
+    "WhatsApp — Admin Alert": {
+      "main": [[{ "node": "Respond Success", "type": "main", "index": 0 }]]
+    },
+    "Telegram — Enrollment Alert": {
+      "main": [[{ "node": "Respond Success", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    { "name": "coin-education" },
+    { "name": "enrollment" }
+  ]
+}

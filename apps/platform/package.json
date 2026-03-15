@@ -1,0 +1,41 @@
+{
+  "name": "@simplilms/platform",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf .next node_modules .turbo"
+  },
+  "dependencies": {
+    "@simplilms/auth": "*",
+    "@simplilms/database": "*",
+    "@simplilms/core": "*",
+    "@simplilms/ui": "*",
+    "@hookform/resolvers": "^3.9.1",
+    "@stripe/stripe-js": "^8.9.0",
+    "@supabase/ssr": "^0.5.2",
+    "@supabase/supabase-js": "^2.47.0",
+    "lucide-react": "^0.468.0",
+    "next": "^14.2.21",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-hook-form": "^7.54.2",
+    "sonner": "^1.7.1",
+    "stripe": "^20.4.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@simplilms/config": "*",
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.0"
+  }
+}
