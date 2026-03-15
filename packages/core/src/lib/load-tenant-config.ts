@@ -85,6 +85,10 @@ function mapRowToConfig(
       remarketingEnabled: featureFlags.remarketing_enabled ?? true,
       zoomIntegration: featureFlags.zoom_integration ?? false,
       stripeConnect: featureFlags.stripe_connect ?? false,
+      lmsEnabled: featureFlags.lms_enabled ?? true,
+      aiCourseCreator: featureFlags.ai_course_creator ?? false,
+      certificates: featureFlags.certificates ?? true,
+      quizzes: featureFlags.quizzes ?? true,
     },
 
     // ISA partner config
@@ -130,6 +134,12 @@ function getEnvFallbackConfig(): TenantConfig {
         process.env.NEXT_PUBLIC_FEATURE_ZOOM === "true",
       stripeConnect:
         process.env.NEXT_PUBLIC_FEATURE_STRIPE_CONNECT === "true",
+      lmsEnabled: process.env.NEXT_PUBLIC_FEATURE_LMS !== "false",
+      aiCourseCreator:
+        process.env.NEXT_PUBLIC_FEATURE_AI_COURSE === "true",
+      certificates:
+        process.env.NEXT_PUBLIC_FEATURE_CERTIFICATES !== "false",
+      quizzes: process.env.NEXT_PUBLIC_FEATURE_QUIZZES !== "false",
     },
   };
 }

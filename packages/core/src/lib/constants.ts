@@ -14,6 +14,7 @@ import {
   Calendar,
   User,
   Building2,
+  Award,
   type LucideIcon,
 } from "lucide-react";
 
@@ -34,6 +35,8 @@ export const SIDEBAR_NAV: Record<UserRole, NavItem[]> = {
     { label: "Enrollments", href: "/admin/enrollments", icon: GraduationCap },
     { label: "Students", href: "/admin/students", icon: UserCheck },
     { label: "Instructors", href: "/admin/instructors", icon: BookOpen },
+    { label: "Courses", href: "/admin/courses", icon: BookOpen },
+    { label: "Certificates", href: "/admin/certificates", icon: Award },
     { label: "Classes", href: "/admin/classes", icon: Calendar },
     { label: "Messages", href: "/admin/messages", icon: MessageSquare },
     { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
@@ -48,6 +51,7 @@ export const SIDEBAR_NAV: Record<UserRole, NavItem[]> = {
   ],
   teacher_paid: [
     { label: "Dashboard", href: "/teacher", icon: LayoutDashboard },
+    { label: "Courses", href: "/teacher/courses", icon: GraduationCap },
     { label: "Classes", href: "/teacher/classes", icon: BookOpen },
     { label: "Attendance", href: "/teacher/attendance", icon: ClipboardList },
     { label: "Earnings", href: "/teacher/earnings", icon: DollarSign },
@@ -55,6 +59,7 @@ export const SIDEBAR_NAV: Record<UserRole, NavItem[]> = {
   ],
   teacher_unpaid: [
     { label: "Dashboard", href: "/teacher", icon: LayoutDashboard },
+    { label: "Courses", href: "/teacher/courses", icon: GraduationCap },
     { label: "Classes", href: "/teacher/classes", icon: BookOpen },
     { label: "Attendance", href: "/teacher/attendance", icon: ClipboardList },
     { label: "Messages", href: "/teacher/messages", icon: MessageSquare },
@@ -62,6 +67,8 @@ export const SIDEBAR_NAV: Record<UserRole, NavItem[]> = {
   student: [
     { label: "Dashboard", href: "/student", icon: LayoutDashboard },
     { label: "Profile", href: "/profile", icon: User },
+    { label: "Courses", href: "/student/courses", icon: GraduationCap },
+    { label: "Certificates", href: "/student/certificates", icon: Award },
     { label: "Payments", href: "/student/payments", icon: DollarSign },
     { label: "Messages", href: "/student/messages", icon: MessageSquare },
     { label: "Classes", href: "/student/classes", icon: BookOpen },
