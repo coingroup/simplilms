@@ -111,7 +111,7 @@ npx turbo dev         # Dev server (platform: 3000, marketing: 3001)
 - Turborepo monorepo with 5 packages and 2 apps
 - All @simplilms/* packages renamed from @coin-education/*
 - Zero COIN Education references in runtime code
-- `apps/platform` — Full admissions/enrollment SaaS (35 routes + middleware)
+- `apps/platform` — Full admissions/enrollment SaaS (38 routes + middleware)
   - CRM & prospect pipeline
   - Application flow with 5-step wizard
   - Stripe Identity KYC
@@ -120,22 +120,28 @@ npx turbo dev         # Dev server (platform: 3000, marketing: 3001)
   - Instructor portal (classes, attendance, earnings)
   - Role-based access control (5 roles)
   - Tenant-dynamic branding (TenantProvider + ThemeInjector)
+  - **Tenant admin panel** (list, create, detail/edit) — super_admin only
 - `apps/marketing` — SimpliLMS landing page + pricing page
   - Landing: hero, features grid, how-it-works, social proof, CTA
   - Pricing: 3 tiers (Starter $99, Professional $299, Enterprise $999)
-- `packages/core` — 56 shared files (7 lib, 9 actions, 40 components)
+- `packages/core` — 57 shared files (7 lib, 10 actions, 40 components)
+  - Tenant server actions: CRUD for whitelabel_tenants table
+  - `buildTenantContext()` added to all n8n webhook payloads
 - `packages/ui` — 18 shadcn/ui components
 - `packages/database` — Typed Supabase client
 - `packages/auth` — Supabase Auth with role-based helpers
-- `supabase/` — 6 migration files for per-tenant database setup
+- `supabase/` — 7 migration files (6 per-tenant schema + 1 whitelabel_tenants)
 - `n8n/` — 15 workflow JSONs for admissions automation
-- Build verified: `turbo build` passes for all apps
+- `scripts/` — Tenant provisioning CLI
+  - `provision-tenant.ts` — Interactive script: generates .env + seed.sql
+  - `apply-migrations.ts` — Applies migrations to new Supabase projects
+  - `templates/tenant-seed.sql` — Parameterized seed template
+- Build verified: `turbo build` passes for all apps (marketing: 3 routes, platform: 38 routes)
 
 ### In Progress
 - None
 
 ### Next
-- Phase 10 Steps 5-8: Tenant provisioning CLI, admin panel, n8n adaptation, docs
 - Phase 11: Core LMS features (courses, modules, lessons, quizzes, progress, certificates)
 - Phase 12: AI Course Creator (Claude API interview engine, auto course builder)
 
