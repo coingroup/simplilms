@@ -13,6 +13,7 @@ import {
   DollarSign,
   Calendar,
   User,
+  Building2,
   type LucideIcon,
 } from "lucide-react";
 
@@ -36,6 +37,7 @@ export const SIDEBAR_NAV: Record<UserRole, NavItem[]> = {
     { label: "Classes", href: "/admin/classes", icon: Calendar },
     { label: "Messages", href: "/admin/messages", icon: MessageSquare },
     { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
+    { label: "Tenants", href: "/admin/tenants", icon: Building2 },
     { label: "Settings", href: "/admin/settings", icon: Settings },
   ],
   school_rep: [

@@ -59,6 +59,9 @@ supabase/.branches/
 yarn.lock
 pnpm-lock.yaml
 
+# Tenant provisioning output (contains secrets)
+/tenants/
+
 # Misc
 *.log
 *.pid
