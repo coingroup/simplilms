@@ -1,6 +1,6 @@
 import { requireRole } from "@simplilms/auth/server";
 import { Card, CardContent, CardHeader, CardTitle, Badge } from "@simplilms/ui";
-import { BookOpen, Clock } from "lucide-react";
+import { BookOpen, Clock, Search } from "lucide-react";
 import Link from "next/link";
 import {
   getStudentCourseEnrollments,
@@ -43,11 +43,20 @@ export default async function StudentCoursesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-heading text-2xl font-bold">My Courses</h1>
-        <p className="text-sm text-muted-foreground">
-          Track your course progress and continue learning.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="font-heading text-2xl font-bold">My Courses</h1>
+          <p className="text-sm text-muted-foreground">
+            Track your course progress and continue learning.
+          </p>
+        </div>
+        <Link
+          href="/student/courses/browse"
+          className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 transition-colors"
+        >
+          <Search className="h-4 w-4" />
+          Browse Courses
+        </Link>
       </div>
 
       {enrollmentsWithCourses.length === 0 ? (
@@ -55,9 +64,15 @@ export default async function StudentCoursesPage() {
           <BookOpen className="h-12 w-12 mx-auto mb-3 text-gray-300" />
           <p className="text-sm font-medium">No courses yet</p>
           <p className="text-xs text-gray-400 mt-1">
-            Your enrolled courses will appear here once you are assigned to a
-            course.
+            Browse available courses to start learning.
           </p>
+          <Link
+            href="/student/courses/browse"
+            className="inline-flex items-center gap-2 mt-4 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 transition-colors"
+          >
+            <Search className="h-4 w-4" />
+            Browse Courses
+          </Link>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

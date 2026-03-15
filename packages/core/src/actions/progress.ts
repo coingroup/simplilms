@@ -701,6 +701,247 @@ export async function submitQuizAttempt(
 }
 
 // ============================================================
+// Mutations — Quiz Management (Admin)
+// ============================================================
+
+export async function createQuiz(
+  courseId: string,
+  data: {
+    title: string;
+    description?: string;
+    quiz_type?: string;
+    passing_score?: number;
+    max_attempts?: number | null;
+    time_limit_minutes?: number | null;
+    shuffle_questions?: boolean;
+    show_answers_after?: string;
+    lesson_id?: string | null;
+  }
+): Promise<{ success: boolean; error?: string; id?: string }> {
+  try {
+    const { user, error: authError } = await getUser();
+    if (authError || !user) return { success: false, error: "Unauthorized" };
+    if (user.role !== "super_admin")
+      return { success: false, error: "Insufficient permissions" };
+
+    const supabase = await createServerClient();
+    const tenantId = getTenantId();
+
+    const { data: quiz, error } = await (supabase as any)
+      .from("quizzes")
+      .insert({
+        tenant_id: tenantId,
+        course_id: courseId,
+        title: data.title.trim(),
+        description: data.description?.trim() || null,
+        quiz_type: data.quiz_type || "graded",
+        passing_score: data.passing_score ?? 70,
+        max_attempts: data.max_attempts ?? null,
+        time_limit_minutes: data.time_limit_minutes ?? null,
+        shuffle_questions: data.shuffle_questions ?? false,
+        show_answers_after: data.show_answers_after || "submission",
+        lesson_id: data.lesson_id || null,
+      })
+      .select("id")
+      .single();
+
+    if (error) {
+      console.error("Error creating quiz:", error);
+      return { success: false, error: "Failed to create quiz" };
+    }
+
+    revalidatePath(`/admin/courses/${courseId}`);
+    return { success: true, id: quiz.id };
+  } catch (err) {
+    console.error("createQuiz error:", err);
+    return { success: false, error: "An unexpected error occurred" };
+  }
+}
+
+export async function updateQuiz(
+  quizId: string,
+  courseId: string,
+  data: {
+    title?: string;
+    description?: string;
+    passing_score?: number;
+    max_attempts?: number | null;
+    time_limit_minutes?: number | null;
+    shuffle_questions?: boolean;
+    show_answers_after?: string;
+    is_published?: boolean;
+  }
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { user, error: authError } = await getUser();
+    if (authError || !user) return { success: false, error: "Unauthorized" };
+    if (user.role !== "super_admin")
+      return { success: false, error: "Insufficient permissions" };
+
+    const supabase = await createServerClient();
+    const updateData: Record<string, unknown> = {};
+    if (data.title !== undefined) updateData.title = data.title.trim();
+    if (data.description !== undefined)
+      updateData.description = data.description.trim() || null;
+    if (data.passing_score !== undefined) updateData.passing_score = data.passing_score;
+    if (data.max_attempts !== undefined) updateData.max_attempts = data.max_attempts;
+    if (data.time_limit_minutes !== undefined)
+      updateData.time_limit_minutes = data.time_limit_minutes;
+    if (data.shuffle_questions !== undefined)
+      updateData.shuffle_questions = data.shuffle_questions;
+    if (data.show_answers_after !== undefined)
+      updateData.show_answers_after = data.show_answers_after;
+    if (data.is_published !== undefined) updateData.is_published = data.is_published;
+
+    const { error } = await (supabase as any)
+      .from("quizzes")
+      .update(updateData)
+      .eq("id", quizId);
+
+    if (error) {
+      console.error("Error updating quiz:", error);
+      return { success: false, error: "Failed to update quiz" };
+    }
+
+    revalidatePath(`/admin/courses/${courseId}`);
+    return { success: true };
+  } catch (err) {
+    console.error("updateQuiz error:", err);
+    return { success: false, error: "An unexpected error occurred" };
+  }
+}
+
+export async function createQuizQuestion(
+  quizId: string,
+  courseId: string,
+  data: {
+    question_type: string;
+    question_text: string;
+    explanation?: string;
+    options?: Array<{ id: string; text: string; is_correct?: boolean }>;
+    points?: number;
+  }
+): Promise<{ success: boolean; error?: string; id?: string }> {
+  try {
+    const { user, error: authError } = await getUser();
+    if (authError || !user) return { success: false, error: "Unauthorized" };
+    if (user.role !== "super_admin")
+      return { success: false, error: "Insufficient permissions" };
+
+    const supabase = await createServerClient();
+    const tenantId = getTenantId();
+
+    // Get next sort order
+    const { data: existing } = await (supabase as any)
+      .from("quiz_questions")
+      .select("sort_order")
+      .eq("quiz_id", quizId)
+      .order("sort_order", { ascending: false })
+      .limit(1);
+
+    const nextOrder = existing?.[0] ? existing[0].sort_order + 1 : 0;
+
+    const { data: question, error } = await (supabase as any)
+      .from("quiz_questions")
+      .insert({
+        tenant_id: tenantId,
+        quiz_id: quizId,
+        question_type: data.question_type,
+        question_text: data.question_text.trim(),
+        explanation: data.explanation?.trim() || null,
+        options: data.options || [],
+        points: data.points || 1,
+        sort_order: nextOrder,
+      })
+      .select("id")
+      .single();
+
+    if (error) {
+      console.error("Error creating quiz question:", error);
+      return { success: false, error: "Failed to create question" };
+    }
+
+    revalidatePath(`/admin/courses/${courseId}`);
+    return { success: true, id: question.id };
+  } catch (err) {
+    console.error("createQuizQuestion error:", err);
+    return { success: false, error: "An unexpected error occurred" };
+  }
+}
+
+export async function updateQuizQuestion(
+  questionId: string,
+  courseId: string,
+  data: {
+    question_text?: string;
+    explanation?: string;
+    options?: Array<{ id: string; text: string; is_correct?: boolean }>;
+    points?: number;
+  }
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { user, error: authError } = await getUser();
+    if (authError || !user) return { success: false, error: "Unauthorized" };
+    if (user.role !== "super_admin")
+      return { success: false, error: "Insufficient permissions" };
+
+    const supabase = await createServerClient();
+    const updateData: Record<string, unknown> = {};
+    if (data.question_text !== undefined)
+      updateData.question_text = data.question_text.trim();
+    if (data.explanation !== undefined)
+      updateData.explanation = data.explanation.trim() || null;
+    if (data.options !== undefined) updateData.options = data.options;
+    if (data.points !== undefined) updateData.points = data.points;
+
+    const { error } = await (supabase as any)
+      .from("quiz_questions")
+      .update(updateData)
+      .eq("id", questionId);
+
+    if (error) {
+      console.error("Error updating quiz question:", error);
+      return { success: false, error: "Failed to update question" };
+    }
+
+    revalidatePath(`/admin/courses/${courseId}`);
+    return { success: true };
+  } catch (err) {
+    console.error("updateQuizQuestion error:", err);
+    return { success: false, error: "An unexpected error occurred" };
+  }
+}
+
+export async function deleteQuizQuestion(
+  questionId: string,
+  courseId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { user, error: authError } = await getUser();
+    if (authError || !user) return { success: false, error: "Unauthorized" };
+    if (user.role !== "super_admin")
+      return { success: false, error: "Insufficient permissions" };
+
+    const supabase = await createServerClient();
+    const { error } = await (supabase as any)
+      .from("quiz_questions")
+      .delete()
+      .eq("id", questionId);
+
+    if (error) {
+      console.error("Error deleting quiz question:", error);
+      return { success: false, error: "Failed to delete question" };
+    }
+
+    revalidatePath(`/admin/courses/${courseId}`);
+    return { success: true };
+  } catch (err) {
+    console.error("deleteQuizQuestion error:", err);
+    return { success: false, error: "An unexpected error occurred" };
+  }
+}
+
+// ============================================================
 // Mutations — Certificates
 // ============================================================
 

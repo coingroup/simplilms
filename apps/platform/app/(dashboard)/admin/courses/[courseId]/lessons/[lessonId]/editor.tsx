@@ -305,6 +305,7 @@ export function LessonEditorClient({
               quizId={quizId}
               onChange={setQuizId}
               disabled={isPending}
+              courseId={courseId}
             />
           )}
         </CardContent>
@@ -512,26 +513,44 @@ function QuizContentEditor({
   quizId,
   onChange,
   disabled,
+  courseId,
 }: {
   quizId: string;
   onChange: (v: string) => void;
   disabled: boolean;
+  courseId: string;
 }) {
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
-        Enter the Quiz ID to link to this lesson. Students will take the quiz
-        as part of this lesson.
+        Enter the Quiz ID to link to this lesson, or manage quizzes from the
+        course quizzes page.
       </p>
       <div className="space-y-2">
         <Label htmlFor="quiz-id">Quiz ID</Label>
-        <Input
-          id="quiz-id"
-          value={quizId}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="UUID of the quiz"
-          disabled={disabled}
-        />
+        <div className="flex items-center gap-2">
+          <Input
+            id="quiz-id"
+            value={quizId}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="UUID of the quiz"
+            disabled={disabled}
+            className="flex-1"
+          />
+          <a
+            href={
+              quizId
+                ? `/admin/courses/${courseId}/quizzes/${quizId}`
+                : `/admin/courses/${courseId}/quizzes`
+            }
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors whitespace-nowrap"
+          >
+            <HelpCircle className="h-4 w-4" />
+            {quizId ? "Edit Quiz" : "Manage Quizzes"}
+          </a>
+        </div>
       </div>
     </div>
   );
