@@ -105,131 +105,54 @@ npx turbo dev         # Dev server (platform: 3000, marketing: 3001)
 
 ## Current State
 
-**Last updated:** 2026-03-15
+**Last updated:** 2026-03-16
 
-### Completed
-- Turborepo monorepo with 5 packages and 2 apps
-- All @simplilms/* packages renamed from @coin-education/*
-- Zero COIN Education references in runtime code
-- `apps/platform` — Full admissions/enrollment SaaS (43 routes + middleware)
-  - CRM & prospect pipeline
-  - Application flow with 5-step wizard
-  - Stripe Identity KYC
-  - Payment processing (full + installment plans)
-  - Student portal (dashboard, messages, classes, payments)
-  - Instructor portal (classes, attendance, earnings)
-  - Role-based access control (5 roles)
-  - Tenant-dynamic branding (TenantProvider + ThemeInjector)
-  - **Tenant admin panel** (list, create, detail/edit) — super_admin only
-  - **Core LMS** (Phase 11) — see below
-- `apps/marketing` — SimpliLMS landing page + pricing page + **industry pages**
-  - Landing: hero, features grid, **industry grid**, how-it-works, social proof, CTA
-  - Pricing: 3 tiers (Starter $99, Professional $299, Enterprise $999) + **sector module add-ons**
-  - **Industries hub page** (`/industries`) — 8 sector cards with icons, pricing, links
-  - **8 sector landing pages** (`/industries/[slug]`) — full marketing pages per sector:
-    - Real Estate ($149/mo), Insurance ($149/mo), Healthcare ($199/mo), CDL Trucking ($149/mo)
-    - Cosmetology ($99/mo), IT/Tech ($99/mo), Corporate Compliance ($149/mo), Government ($199/mo)
-  - Each sector page includes: pain points, features, AI capabilities, compliance docs, regulators, question bank size, platform features, pricing CTA, cross-links to other sectors
-  - Shared Header and Footer components (extracted from inline)
-  - Marketing site now: 14 statically generated pages
-- `packages/core` — 70+ shared files (8 lib, 14 actions, 45 components)
-  - Tenant server actions: CRUD for whitelabel_tenants table
-  - `buildTenantContext()` added to all n8n webhook payloads
-  - **LMS actions**: courses.ts, progress.ts, quizzes.ts (Course/Module/Lesson CRUD, progress tracking, quiz auto-grading, certificates)
-  - **AI Course Creator**: ai-service.ts (Claude API client, prompts), ai-course.ts (server actions), 5 UI components
-  - **Sector module feature flags**: 8 new flags in TenantConfig (sectorRealEstate, sectorInsurance, sectorHealthcare, sectorCdlTrucking, sectorCosmetology, sectorItTech, sectorCorporateCompliance, sectorGovernment)
-  - `activeSectors` derived array in TenantConfig
-  - `deriveActiveSectors()` helper in load-tenant-config
-- `packages/ui` — 18 shadcn/ui components
-- `packages/database` — Typed Supabase client
-- `packages/auth` — Supabase Auth with role-based helpers
-- `supabase/` — 9 migration files (6 per-tenant schema + 1 whitelabel_tenants + 1 LMS tables + 1 AI course interviews)
-- `n8n/` — 15 workflow JSONs for admissions automation
-- `scripts/` — Tenant provisioning CLI
-  - `provision-tenant.ts` — Interactive script: generates .env + seed.sql
-  - `apply-migrations.ts` — Applies migrations to new Supabase projects
-  - `templates/tenant-seed.sql` — Parameterized seed template
-- `docs/sector-strategy.md` — Full sector strategy document with architecture, revenue model ($681M TAM), market sizing per sector, regulatory compliance approach, and implementation roadmap
-- Build verified: `turbo build` passes for all apps (marketing: 14 pages, platform: 45 routes)
+### Completed Phases
+- **Phase 1-10:** Foundation, public website, portal auth, admin CRM, application flow, payment processing, student portal, instructor portal, n8n workflows, white-label multi-tenancy
+- **Phase 11:** Core LMS (courses, modules, lessons, quizzes, progress tracking, certificates — 9 new DB tables)
+- **Phase 12:** AI Course Creator (Claude API interview engine, 3 generation modes, outline review, sector-specific prompts)
+- **Sector Strategy:** 8 sector modules defined, marketing pages, $681M TAM analysis
+- **Phase 13:** Sector module database, admin UI, question banks
+- **Phase 14:** Lesson content editor, enrollment management, quiz-taking UI
+- **Phase 15:** Course edit page, quiz builder, student course catalog/browse
+- **Phase 16:** Advanced analytics dashboard with real data — 9 query functions, pure CSS charts, course drill-down, at-risk students, CSV exports
+- **Phase 17:** Admin settings UI with 4 tabbed forms — Organization, Branding (live color preview), Features (16 toggles), Notifications
 
-#### Phase 11: Core LMS (Completed)
-- **Database migration** (`20260316000001_lms_tables.sql`): 9 new tables — courses, modules, lessons, quizzes, quiz_questions, course_enrollments, lesson_progress, quiz_attempts, certificates. Full RLS policies, indexes, triggers, and `generate_certificate_number()` function.
-- **Server actions** (3 new files, ~1,570 lines):
-  - `courses.ts` — CourseRow/ModuleRow/LessonRow types, getCourses, getCourseById, getCourseBySlug, getCourseWithContent, createCourse (FormData), updateCourse, toggleCoursePublished, createModule, updateModule, deleteModule, createLesson, updateLesson, deleteLesson
-  - `progress.ts` — CourseEnrollmentRow/LessonProgressRow/QuizAttemptRow/QuizRow/QuizQuestionRow/CertificateRow types, enrollStudentInCourse, startLesson, completeLesson, recalculateCourseProgress, startQuizAttempt, submitQuizAttempt (auto-grades MC/TF/short_answer, flags essay for manual grading), issueCertificate
-  - `quizzes.ts` — createQuiz, updateQuiz, deleteQuiz, addQuestion, updateQuestion, deleteQuestion (admin-only)
-- **Feature flags**: lmsEnabled, aiCourseCreator, certificates, quizzes added to TenantConfig
-- **Sidebar navigation**: Courses + Certificates added for admin, teacher, and student roles
-- **Admin pages** (5 new routes):
-  - `/admin/courses` — Course list table with difficulty badges, status, enrollment counts
-  - `/admin/courses/new` — Create course form (title, description, category, difficulty, pricing, learning objectives)
-  - `/admin/courses/[courseId]` — Course detail + builder: add/remove modules and lessons, publish/unpublish, content type badges
-  - `/admin/certificates` — Certificate management (placeholder)
-- **Student pages** (3 new routes):
-  - `/student/courses` — Enrolled courses grid with progress bars
-  - `/student/courses/[courseId]` — Course player: lesson sidebar navigation, content rendering (text/video/document/embed), mark-complete, next lesson
-  - `/student/certificates` — Earned certificates with verification codes, certificate numbers, PDF download
-- **Teacher pages** (2 new routes):
-  - `/teacher/courses` — Assigned courses grid with student counts
-  - `/teacher/courses/[courseId]` — Course detail: info cards (students, modules, lessons, difficulty), content tree, student progress placeholder
-- All loading skeletons for every page
+### Platform Summary
+- **`apps/platform`** — 45+ routes + middleware
+  - Admissions CRM, application flow, Stripe payments, student/instructor/admin portals
+  - Core LMS with course builder, quiz engine, certificates
+  - AI Course Creator (Claude API)
+  - Advanced analytics with drill-downs and CSV export
+  - Self-serve admin settings (organization, branding, features, notifications)
+  - Sector module admin panel + question banks
+  - Role-based access (5 roles: super_admin, school_rep, teacher_paid, teacher_unpaid, student)
+- **`apps/marketing`** — 14 statically generated pages (landing, pricing, 8 industry pages, industries hub)
+- **`packages/core`** — 80+ shared files (actions, components, lib)
+- **`packages/ui`** — 18 shadcn/ui components
+- **`supabase/`** — 10 migration files
+- **`n8n/`** — 15 workflow JSONs
+- **`scripts/`** — Tenant provisioning CLI
 
-#### Sector Module Strategy (Completed — Marketing & Architecture)
-- **Strategy document**: `docs/sector-strategy.md` — architecture, revenue model, competitive analysis, market sizing
-- **8 target sectors**: Real Estate, Insurance, Healthcare, CDL Trucking, Cosmetology, IT/Tech, Corporate Compliance, Government
-- **Pricing model**: $99-199/mo per sector module add-on (on top of Professional $299 or Enterprise $999)
-- **Revenue projections**: Conservative Year 2 ARR ~$796K, Aggressive ~$2.5M
-- **TAM**: $681M across all sectors (79,000+ potential customers)
-- **Key differentiator**: Only platform combining admissions + enrollment + payments + LMS + AI course creation + regulatory compliance documentation
-- **TenantConfig updated**: 8 sector feature flags + activeSectors array
-- **Marketing pages**: 8 sector landing pages + hub page + updated pricing + updated home page
-- **Regulatory bodies covered**: TWC, GNPEC, BPPE, SCHEV, ACCSC, COE, DEAC, FMCSA, state DOI, nursing boards, cosmetology boards, OPM, and more
-
-#### Phase 12: AI Course Creator (Completed)
-- **Database migration** (`20260316000002_ai_course_interviews.sql`): ai_course_interviews table with status enum (interviewing/generating/review/completed/failed), generation_mode (interview/document/topic), sector_key, messages jsonb, uploaded_documents jsonb, generated_outline jsonb, token tracking. Full RLS policies.
-- **AI service layer** (`packages/core/src/lib/ai-service.ts`, ~300 lines):
-  - Claude API client (claude-sonnet-4-20250514 for both interview and generation)
-  - `getInterviewSystemPrompt()` — builds SME interview system prompt with sector context
-  - `getGenerationSystemPrompt()` — JSON schema output with quality requirements
-  - `getDocumentGenerationPrompt()` — for document upload mode
-  - `SECTOR_AI_PROMPTS` — 8 detailed sector prompts covering regulations, terminology, standards for: real estate (TREC, GREC, FREC, DRE), insurance (DOI, NAIC, FINRA, NMLS), healthcare (nursing boards, CMS, NAACLS), CDL (FMCSA, ELDT), cosmetology (NIC, state boards), IT/tech (CompTIA, AWS, Azure), corporate compliance (OSHA, HIPAA, EEO), government (OPM, EEOC, CISA)
-  - `parseGeneratedOutline()`, `isReadyToGenerate()`, `stripReadyMarker()` helpers
-  - Types: ChatMessage, GeneratedOutline, GeneratedModule, GeneratedLesson, GeneratedQuizQuestion
-- **Server actions** (`packages/core/src/actions/ai-course.ts`, ~780 lines):
-  - `startInterview(formData)` — creates interview, calls Claude for first question (interview mode) or creates row for document mode
-  - `sendInterviewMessage(interviewId, userMessage)` — appends message, calls Claude, detects `[READY_TO_GENERATE]` marker, tracks tokens
-  - `generateCourseFromInterview(interviewId)` — sends transcript/documents to Claude for structured JSON, parses outline
-  - `createCourseFromOutline(interviewId, editedOutline?)` — inserts into courses, modules, lessons, quizzes, quiz_questions from outline
-  - `addDocumentToInterview(interviewId, formData)` — text extraction, stores in interview record
-  - `deleteAiInterview(interviewId)` — cleanup
-  - Queries: `getAiInterviews()`, `getAiInterview(id)`
-- **5 UI components** (`packages/core/src/components/ai-course/`):
-  - `interview-start-form.tsx` — topic, audience, length, sector, mode selection (interview vs document)
-  - `interview-chat.tsx` — real-time chat with typing indicator, auto-scroll, readiness banner
-  - `outline-review.tsx` — editable title/description, difficulty badge, learning objectives, module cards, create/regenerate buttons
-  - `outline-module-card.tsx` — collapsible module with lesson list, duration, quiz count
-  - `interview-status-badge.tsx` — color-coded: interviewing=blue, generating=amber, review=green, completed=gray, failed=red
-- **3 admin pages** (`apps/platform/app/(dashboard)/admin/courses/ai/`):
-  - `page.tsx` — AI Course Creator listing with interview table or empty state
-  - `new/page.tsx` — InterviewStartForm page
-  - `[interviewId]/page.tsx` — status-based rendering (chat → spinner → outline review → success → error)
-- Updated admin courses page with "Create with AI" button (Sparkles icon)
-- Three generation modes: SME Interview, Document Upload, Topic-based
-- Build verified: 45 platform routes
+### Recent Commits
+- `51e2057` — Phase 17: Admin settings UI with tabbed forms (6 files, 1,461 lines)
+- `2cdd41e` — Phase 16: Advanced analytics dashboard with real data (13 files, 2,527 lines)
+- `2c6f4e0` — Fix dead sidebar nav links + missing loading skeletons (19 files, 863 lines)
+- `3357947` — Phase 15: Course edit page, quiz builder, student course catalog
+- `997e18a` — Phase 14: Lesson content editor, enrollment management, quiz-taking UI
 
 ### In Progress
 - None
 
-### Next
-- Sector module database tables: `sector_modules`, `tenant_sector_subscriptions`, `sector_question_banks`
-- Sector module content: curriculum frameworks, question banks per sector
-- LMS + AI Course Creator migrations need to be applied to Supabase project
-- ANTHROPIC_API_KEY environment variable needs to be configured for AI features
-- Document upload mode refinement (PDF parsing beyond basic text extraction)
+### Next (Remaining Phases — ~3-4 left)
+1. **Discussion Forums** — threaded discussions per course, student/instructor participation, moderation
+2. **Gamification & Engagement** — points, streaks, leaderboards, achievement badges
+3. **Live Classes / Zoom Integration** — schedule live sessions, in-portal Zoom embed, recording access
+4. **Polish & Launch Prep** — error boundaries, loading states audit, accessibility, SEO, production env setup
 
 ### Blockers / Decisions Pending
 - simplilms.com domain registration needed
 - First tenant (COIN Education) needs to be configured as a deployment
-- LMS migration (`20260316000001_lms_tables.sql`) needs to be applied to Supabase
-- AI migration (`20260316000002_ai_course_interviews.sql`) needs to be applied to Supabase
+- Supabase migrations need to be applied: LMS, AI interviews, sectors, tenant settings
 - `ANTHROPIC_API_KEY` environment variable needed for AI Course Creator
+- Stripe env vars needed for payment flow end-to-end
