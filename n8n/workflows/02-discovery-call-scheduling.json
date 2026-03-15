@@ -1,0 +1,203 @@
+{
+  "name": "COIN Education — 2 — Discovery Call Scheduling",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "tags": [
+    { "name": "COIN Education" }
+  ],
+  "nodes": [
+    {
+      "name": "Webhook — Call Booked",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "coin-call-booked",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "coin-call-booked",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "name": "Parse Booking Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300],
+      "parameters": {
+        "jsCode": "// Parse booking data from Google Calendar or scheduling widget\nconst body = $input.first().json.body || $input.first().json;\n\nconst prospectEmail = body.email || body.attendee_email;\nconst callDate = body.start_time || body.scheduled_date;\nconst prospectName = body.name || `${body.first_name || ''} ${body.last_name || ''}`.trim();\n\nif (!prospectEmail || !callDate) {\n  throw new Error('Missing required booking data: email and start_time');\n}\n\n// Format date in EST\nconst estDate = new Date(callDate).toLocaleString('en-US', {\n  timeZone: 'America/New_York',\n  weekday: 'long',\n  year: 'numeric',\n  month: 'long',\n  day: 'numeric',\n  hour: 'numeric',\n  minute: '2-digit',\n  hour12: true\n});\n\nreturn [{\n  json: {\n    prospect_email: prospectEmail,\n    prospect_name: prospectName,\n    prospect_phone: body.phone || '',\n    call_date_iso: callDate,\n    call_date_est: estDate,\n    program_interest: body.program_interest || '',\n    duration_minutes: body.duration || 30\n  }\n}];"
+      }
+    },
+    {
+      "name": "Create Zoom Meeting",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [710, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.zoom.us/v2/users/me/meetings",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.ZOOM_ACCESS_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  topic: `COIN Education Discovery Call — ${$json.prospect_name}`,\n  type: 2,\n  start_time: $json.call_date_iso,\n  duration: $json.duration_minutes,\n  timezone: 'America/New_York',\n  settings: {\n    host_video: true,\n    participant_video: true,\n    join_before_host: false,\n    waiting_room: true,\n    audio: 'both'\n  }\n}) }}"
+      }
+    },
+    {
+      "name": "Extract Zoom Details",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [940, 300],
+      "parameters": {
+        "jsCode": "const zoom = $input.first().json;\nconst prev = $('Parse Booking Data').first().json;\n\nreturn [{\n  json: {\n    ...prev,\n    zoom_meeting_id: String(zoom.id),\n    zoom_join_url: zoom.join_url,\n    zoom_start_url: zoom.start_url,\n    zoom_password: zoom.password || ''\n  }\n}];"
+      }
+    },
+    {
+      "name": "Update Prospect in Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1170, 300],
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://lzegdrzoyyimfgwgqnlo.supabase.co/rest/v1/prospects?email=eq.{{ encodeURIComponent($json.prospect_email) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  discovery_call_date: $json.call_date_iso,\n  discovery_call_zoom_link: $json.zoom_join_url\n}) }}"
+      }
+    },
+    {
+      "name": "Send WhatsApp to School Rep",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1400, 180],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/{{ $env.TWILIO_ACCOUNT_SID }}/Messages.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "From", "value": "={{ $env.TWILIO_WHATSAPP_NUMBER }}" },
+            { "name": "To", "value": "={{ $env.SCHOOL_REP_WHATSAPP }}" },
+            { "name": "Body", "value": "=🎓 *Discovery Call Scheduled*\n\n*Name:* {{ $json.prospect_name }}\n*Email:* {{ $json.prospect_email }}\n*Phone:* {{ $json.prospect_phone || 'Not provided' }}\n*Program:* {{ $json.program_interest || 'Not specified' }}\n\n*Date:* {{ $json.call_date_est }} EST\n*Zoom:* {{ $json.zoom_join_url }}\n\n_Please join 5 minutes early._" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Send SMS to Prospect",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1400, 420],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/{{ $env.TWILIO_ACCOUNT_SID }}/Messages.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "From", "value": "={{ $env.TWILIO_PHONE_NUMBER }}" },
+            { "name": "To", "value": "={{ $json.prospect_phone }}" },
+            { "name": "Body", "value": "=Hi {{ $json.prospect_name }}! Your discovery call with COIN Education is confirmed for {{ $json.call_date_est }} EST. Join via Zoom: {{ $json.zoom_join_url }} — We look forward to speaking with you!" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Create Google Calendar Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1630, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://www.googleapis.com/calendar/v3/calendars/{{ $env.GOOGLE_CALENDAR_ID }}/events",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.GOOGLE_ACCESS_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  summary: `Discovery Call — ${$json.prospect_name}`,\n  description: `Prospect: ${$json.prospect_name}\\nEmail: ${$json.prospect_email}\\nPhone: ${$json.prospect_phone}\\nProgram: ${$json.program_interest}\\n\\nZoom: ${$json.zoom_join_url}`,\n  start: {\n    dateTime: $json.call_date_iso,\n    timeZone: 'America/New_York'\n  },\n  end: {\n    dateTime: new Date(new Date($json.call_date_iso).getTime() + $json.duration_minutes * 60000).toISOString(),\n    timeZone: 'America/New_York'\n  },\n  attendees: [\n    { email: $json.prospect_email }\n  ],\n  conferenceData: {\n    entryPoints: [{\n      entryPointType: 'video',\n      uri: $json.zoom_join_url,\n      label: 'Zoom Meeting'\n    }]\n  },\n  reminders: {\n    useDefault: false,\n    overrides: [\n      { method: 'email', minutes: 60 },\n      { method: 'popup', minutes: 15 }\n    ]\n  }\n}) }}"
+      }
+    },
+    {
+      "name": "Respond — Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1860, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  success: true,\n  message: 'Discovery call scheduled successfully',\n  zoom_join_url: $('Extract Zoom Details').first().json.zoom_join_url\n}) }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook — Call Booked": {
+      "main": [
+        [{ "node": "Parse Booking Data", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse Booking Data": {
+      "main": [
+        [{ "node": "Create Zoom Meeting", "type": "main", "index": 0 }]
+      ]
+    },
+    "Create Zoom Meeting": {
+      "main": [
+        [{ "node": "Extract Zoom Details", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extract Zoom Details": {
+      "main": [
+        [{ "node": "Update Prospect in Supabase", "type": "main", "index": 0 }]
+      ]
+    },
+    "Update Prospect in Supabase": {
+      "main": [
+        [
+          { "node": "Send WhatsApp to School Rep", "type": "main", "index": 0 },
+          { "node": "Send SMS to Prospect", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Send WhatsApp to School Rep": {
+      "main": [
+        [{ "node": "Create Google Calendar Event", "type": "main", "index": 0 }]
+      ]
+    },
+    "Create Google Calendar Event": {
+      "main": [
+        [{ "node": "Respond — Success", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "pinData": {}
+}

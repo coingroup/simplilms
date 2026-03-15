@@ -1,0 +1,128 @@
+{
+  "name": "COIN Education — 5 — Application Submission Handler",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "COIN Education — 14 — Global Error Handler"
+  },
+  "tags": [
+    { "name": "COIN Education" }
+  ],
+  "nodes": [
+    {
+      "name": "Webhook — Application Submitted",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "coin-application-submit",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "coin-application-submit",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "name": "Parse Application Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300],
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\n\nconst required = ['application_id', 'email', 'first_name', 'last_name'];\nconst missing = required.filter(f => !body[f]);\n\nif (missing.length > 0) {\n  throw new Error(`Missing required fields: ${missing.join(', ')}`);\n}\n\nreturn [{\n  json: {\n    application_id: body.application_id,\n    prospect_id: body.prospect_id,\n    email: body.email,\n    first_name: body.first_name,\n    last_name: body.last_name,\n    full_name: `${body.first_name} ${body.last_name}`,\n    timestamp_est: new Date().toLocaleString('en-US', {\n      timeZone: 'America/New_York',\n      dateStyle: 'medium',\n      timeStyle: 'short'\n    })\n  }\n}];"
+      }
+    },
+    {
+      "name": "Send Admin Email — Brevo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [740, 150],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.brevo.com/v3/smtp/email",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "api-key", "value": "={{ $env.BREVO_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  sender: {\n    name: 'COIN Education Portal',\n    email: 'admissions@coineducation.com'\n  },\n  to: [{\n    email: 'admissions@coineducation.com',\n    name: 'COIN Education Admissions'\n  }],\n  subject: `New Application Submitted — ${$json.full_name}`,\n  htmlContent: `<!DOCTYPE html>\n<html>\n<head><style>\n  body { font-family: Arial, sans-serif; color: #1A1A1A; }\n  .header { background: linear-gradient(135deg, #FFCE38, #FAA62E, #F26822); padding: 20px; text-align: center; }\n  .header h1 { color: white; margin: 0; font-size: 18px; }\n  .content { padding: 20px; }\n  .detail { margin: 8px 0; }\n  .label { font-weight: bold; color: #666; }\n  .cta { display: inline-block; background: #F26822; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 16px; }\n</style></head>\n<body>\n  <div class=\"header\"><h1>New Application Submitted</h1></div>\n  <div class=\"content\">\n    <div class=\"detail\"><span class=\"label\">Name:</span> ${$json.full_name}</div>\n    <div class=\"detail\"><span class=\"label\">Email:</span> ${$json.email}</div>\n    <div class=\"detail\"><span class=\"label\">Submitted:</span> ${$json.timestamp_est} EST</div>\n    <a href=\"https://portal.coineducation.com/admin/applications\" class=\"cta\">Review Application →</a>\n  </div>\n</body></html>`\n}) }}"
+      }
+    },
+    {
+      "name": "Send WhatsApp Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [740, 350],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/{{ $env.TWILIO_ACCOUNT_SID }}/Messages.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "From", "value": "={{ $env.TWILIO_WHATSAPP_NUMBER }}" },
+            { "name": "To", "value": "={{ $env.ADMIN_WHATSAPP }}" },
+            { "name": "Body", "value": "=*New Application Submitted*\n\n*Name:* {{ $json.full_name }}\n*Email:* {{ $json.email }}\n*Time:* {{ $json.timestamp_est }} EST\n\nReview at portal.coineducation.com/admin/applications" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Send Telegram Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [740, 550],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  chat_id: $env.TELEGRAM_CHAT_ID,\n  parse_mode: 'HTML',\n  text: `📋 <b>New Application Submitted</b>\\n\\n` +\n    `<b>Name:</b> ${$json.full_name}\\n` +\n    `<b>Email:</b> ${$json.email}\\n` +\n    `<b>Time:</b> ${$json.timestamp_est} EST\\n\\n` +\n    `<a href=\"https://portal.coineducation.com/admin/applications\">Review Application →</a>`\n}) }}"
+      }
+    },
+    {
+      "name": "Respond — Success",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 300],
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    success: true,\n    message: 'Application submission notifications sent',\n    application_id: $('Parse Application Data').first().json.application_id\n  }\n}];"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook — Application Submitted": {
+      "main": [
+        [{ "node": "Parse Application Data", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse Application Data": {
+      "main": [
+        [
+          { "node": "Send Admin Email — Brevo", "type": "main", "index": 0 },
+          { "node": "Send WhatsApp Alert", "type": "main", "index": 0 },
+          { "node": "Send Telegram Alert", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Send Admin Email — Brevo": {
+      "main": [
+        [{ "node": "Respond — Success", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "pinData": {}
+}

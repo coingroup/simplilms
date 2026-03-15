@@ -1,0 +1,198 @@
+{
+  "name": "COIN Education — 10 — Remarketing Campaign Sender",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "tags": [
+    { "name": "COIN Education" }
+  ],
+  "nodes": [
+    {
+      "name": "Webhook — Send Remarketing",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "coin-remarketing-send",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "coin-remarketing-send",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "name": "Parse Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300],
+      "parameters": {
+        "jsCode": "// Parse remarketing request from portal\nconst body = $input.first().json.body || $input.first().json;\n\nconst required = ['prospect_id', 'channel', 'resolved_body'];\nconst missing = required.filter(f => !body[f]);\n\nif (missing.length > 0) {\n  throw new Error(`Missing required fields: ${missing.join(', ')}`);\n}\n\nconst validChannels = ['email', 'sms', 'whatsapp'];\nif (!validChannels.includes(body.channel)) {\n  throw new Error(`Invalid channel: ${body.channel}. Must be: ${validChannels.join(', ')}`);\n}\n\nreturn [{\n  json: {\n    prospect_id: body.prospect_id,\n    prospect_email: body.prospect_email,\n    prospect_phone: body.prospect_phone,\n    prospect_name: body.prospect_name,\n    channel: body.channel,\n    subject: body.subject || '',\n    resolved_body: body.resolved_body,\n    template_id: body.template_id || null,\n    tracking_id: body.tracking_id,\n    sent_by: body.sent_by || 'system'\n  }\n}];"
+      }
+    },
+    {
+      "name": "Switch — Channel",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [710, 300],
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.channel }}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "email",
+              "output": 0
+            },
+            {
+              "value2": "sms",
+              "output": 1
+            },
+            {
+              "value2": "whatsapp",
+              "output": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Send Email — Brevo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 100],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.brevo.com/v3/smtp/email",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "api-key", "value": "={{ $env.BREVO_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  sender: {\n    name: 'COIN Education',\n    email: 'admissions@coineducation.com'\n  },\n  to: [{\n    email: $json.prospect_email,\n    name: $json.prospect_name\n  }],\n  subject: $json.subject || 'A message from COIN Education',\n  htmlContent: `<!DOCTYPE html>\n<html>\n<head><style>\n  body { font-family: Arial, sans-serif; color: #1A1A1A; line-height: 1.6; }\n  .header { background: linear-gradient(135deg, #FFCE38, #FAA62E, #F26822); padding: 20px; text-align: center; }\n  .header h1 { color: white; margin: 0; font-size: 20px; }\n  .content { padding: 30px; max-width: 600px; margin: 0 auto; }\n  .footer { background: #0D0D0D; color: #999; padding: 20px; text-align: center; font-size: 12px; }\n  img { max-width: 100%; }\n</style></head>\n<body>\n  <div class=\"header\"><h1>COIN Education™</h1></div>\n  <div class=\"content\">${$json.resolved_body.replace(/\\n/g, '<br>')}</div>\n  <div class=\"footer\">\n    <p>COIN Education Services Center™ | Atlanta, GA</p>\n    <p><a href=\"https://coineducation.com\" style=\"color: #F26822;\">coineducation.com</a></p>\n  </div>\n</body></html>`,\n  headers: {\n    'X-Tracking-Id': '${$json.tracking_id}'\n  }\n}) }}"
+      }
+    },
+    {
+      "name": "Send SMS — Twilio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/{{ $env.TWILIO_ACCOUNT_SID }}/Messages.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "From", "value": "={{ $env.TWILIO_PHONE_NUMBER }}" },
+            { "name": "To", "value": "={{ $json.prospect_phone }}" },
+            { "name": "Body", "value": "={{ $json.resolved_body }}" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Send WhatsApp — Twilio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 500],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/{{ $env.TWILIO_ACCOUNT_SID }}/Messages.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "From", "value": "={{ $env.TWILIO_WHATSAPP_NUMBER }}" },
+            { "name": "To", "value": "=whatsapp:{{ $json.prospect_phone }}" },
+            { "name": "Body", "value": "={{ $json.resolved_body }}" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Update Communication Log",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 300],
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://lzegdrzoyyimfgwgqnlo.supabase.co/rest/v1/communication_log?tracking_id=eq.{{ $('Parse Request').first().json.tracking_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  sent_at: new Date().toISOString(),\n  delivered_at: new Date().toISOString()\n}) }}"
+      }
+    },
+    {
+      "name": "Respond — Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1430, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  success: true,\n  message: `Remarketing message sent via ${$('Parse Request').first().json.channel}`,\n  tracking_id: $('Parse Request').first().json.tracking_id\n}) }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook — Send Remarketing": {
+      "main": [
+        [{ "node": "Parse Request", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse Request": {
+      "main": [
+        [{ "node": "Switch — Channel", "type": "main", "index": 0 }]
+      ]
+    },
+    "Switch — Channel": {
+      "main": [
+        [{ "node": "Send Email — Brevo", "type": "main", "index": 0 }],
+        [{ "node": "Send SMS — Twilio", "type": "main", "index": 0 }],
+        [{ "node": "Send WhatsApp — Twilio", "type": "main", "index": 0 }]
+      ]
+    },
+    "Send Email — Brevo": {
+      "main": [
+        [{ "node": "Update Communication Log", "type": "main", "index": 0 }]
+      ]
+    },
+    "Send SMS — Twilio": {
+      "main": [
+        [{ "node": "Update Communication Log", "type": "main", "index": 0 }]
+      ]
+    },
+    "Send WhatsApp — Twilio": {
+      "main": [
+        [{ "node": "Update Communication Log", "type": "main", "index": 0 }]
+      ]
+    },
+    "Update Communication Log": {
+      "main": [
+        [{ "node": "Respond — Success", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "pinData": {}
+}

@@ -1,0 +1,187 @@
+{
+  "name": "COIN Education — 7 — Application Review Handler",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "COIN Education — 14 — Global Error Handler"
+  },
+  "tags": [
+    { "name": "COIN Education" }
+  ],
+  "nodes": [
+    {
+      "name": "Webhook — Application Reviewed",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "coin-application-review",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "coin-application-review",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "name": "Parse Review Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300],
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\n\n// Could come from Supabase webhook or portal POST\nlet application;\nif (body.record) {\n  application = body.record;\n} else {\n  application = body;\n}\n\nconst status = application.status;\nif (!status || !['approved', 'rejected'].includes(status)) {\n  throw new Error('Invalid status: ' + status + '. Expected approved or rejected.');\n}\n\nreturn [{\n  json: {\n    application_id: application.id,\n    application_number: application.application_number || 'N/A',\n    status: status,\n    first_name: application.first_name,\n    last_name: application.last_name,\n    email: application.email,\n    phone: application.phone,\n    program_id: application.program_id,\n    rejection_reason: application.rejection_reason || '',\n    full_name: `${application.first_name} ${application.last_name}`,\n    timestamp_est: new Date().toLocaleString('en-US', {\n      timeZone: 'America/New_York',\n      dateStyle: 'medium',\n      timeStyle: 'short'\n    })\n  }\n}];"
+      }
+    },
+    {
+      "name": "Switch — Decision",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [710, 300],
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.status }}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "approved",
+              "output": 0
+            },
+            {
+              "value2": "rejected",
+              "output": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Send Approval Email — Brevo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 100],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.brevo.com/v3/smtp/email",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "api-key", "value": "={{ $env.BREVO_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  sender: {\n    name: 'COIN Education',\n    email: 'admissions@coineducation.com'\n  },\n  to: [{\n    email: $json.email,\n    name: $json.first_name\n  }],\n  subject: 'Your COIN Education application has been approved!',\n  htmlContent: `<!DOCTYPE html>\n<html>\n<head><style>\n  body { font-family: Arial, sans-serif; color: #1A1A1A; line-height: 1.6; }\n  .header { background: linear-gradient(135deg, #FFCE38, #FAA62E, #F26822); padding: 30px; text-align: center; }\n  .header h1 { color: white; margin: 0; }\n  .content { padding: 30px; max-width: 600px; margin: 0 auto; }\n  .cta { display: inline-block; background: #28A745; color: white; padding: 14px 35px; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: bold; margin: 20px 0; }\n  .footer { background: #0D0D0D; color: #999; padding: 20px; text-align: center; font-size: 12px; }\n</style></head>\n<body>\n  <div class=\"header\"><h1>🎉 Application Approved!</h1></div>\n  <div class=\"content\">\n    <p>Dear ${$json.first_name},</p>\n    <p>We're delighted to inform you that your application (${$json.application_number}) to COIN Education has been <strong>approved</strong>!</p>\n    <p>The next step is to complete your enrollment by submitting the required fees. You will receive a separate payment link shortly.</p>\n    <p>If you have any questions, please reach out to admissions@coineducation.com.</p>\n    <p>Welcome to COIN Education!</p>\n    <p>Warm regards,<br><strong>COIN Education Admissions Team</strong></p>\n  </div>\n  <div class=\"footer\"><p>COIN Education Services Center™ | Atlanta, GA</p></div>\n</body></html>`\n}) }}"
+      }
+    },
+    {
+      "name": "Send Approval SMS — Twilio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/{{ $env.TWILIO_ACCOUNT_SID }}/Messages.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "From", "value": "={{ $env.TWILIO_PHONE_NUMBER }}" },
+            { "name": "To", "value": "={{ $json.phone }}" },
+            { "name": "Body", "value": "=Congratulations {{ $json.first_name }}! Your COIN Education application ({{ $json.application_number }}) has been approved! You'll receive payment instructions shortly. Questions? Email admissions@coineducation.com" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Send Telegram — Approved",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1220, 100],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  chat_id: $env.TELEGRAM_CHAT_ID,\n  parse_mode: 'HTML',\n  text: `✅ <b>Application Approved</b>\\n\\n` +\n    `<b>Name:</b> ${$json.full_name}\\n` +\n    `<b>App #:</b> ${$json.application_number}\\n` +\n    `<b>Time:</b> ${$json.timestamp_est} EST\\n\\n` +\n    `Approval email and SMS sent to applicant.`\n}) }}"
+      }
+    },
+    {
+      "name": "Send Rejection Email — Brevo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 500],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.brevo.com/v3/smtp/email",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "api-key", "value": "={{ $env.BREVO_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  sender: {\n    name: 'COIN Education',\n    email: 'admissions@coineducation.com'\n  },\n  to: [{\n    email: $json.email,\n    name: $json.first_name\n  }],\n  subject: 'Update on your COIN Education application',\n  htmlContent: `<!DOCTYPE html>\n<html>\n<head><style>\n  body { font-family: Arial, sans-serif; color: #1A1A1A; line-height: 1.6; }\n  .header { background: #1A1A1A; padding: 30px; text-align: center; }\n  .header h1 { color: white; margin: 0; font-size: 20px; }\n  .content { padding: 30px; max-width: 600px; margin: 0 auto; }\n  .footer { background: #0D0D0D; color: #999; padding: 20px; text-align: center; font-size: 12px; }\n</style></head>\n<body>\n  <div class=\"header\"><h1>COIN Education</h1></div>\n  <div class=\"content\">\n    <p>Dear ${$json.first_name},</p>\n    <p>Thank you for your interest in COIN Education and for taking the time to complete your application.</p>\n    <p>After careful review, we are unable to offer admission at this time.</p>\n    <p>We encourage you to reach out if you have questions or would like to explore other opportunities with us in the future.</p>\n    <p>Best wishes,<br><strong>COIN Education Admissions Team</strong></p>\n    <p><a href=\"mailto:admissions@coineducation.com\" style=\"color: #F26822;\">admissions@coineducation.com</a></p>\n  </div>\n  <div class=\"footer\"><p>COIN Education Services Center™ | Atlanta, GA</p></div>\n</body></html>`\n}) }}"
+      }
+    },
+    {
+      "name": "Respond — OK",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1220, 400],
+      "parameters": {
+        "jsCode": "const data = $('Parse Review Data').first().json;\nreturn [{\n  json: {\n    success: true,\n    status: data.status,\n    application_id: data.application_id,\n    message: `Application ${data.status} — notifications sent`\n  }\n}];"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook — Application Reviewed": {
+      "main": [
+        [{ "node": "Parse Review Data", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse Review Data": {
+      "main": [
+        [{ "node": "Switch — Decision", "type": "main", "index": 0 }]
+      ]
+    },
+    "Switch — Decision": {
+      "main": [
+        [
+          { "node": "Send Approval Email — Brevo", "type": "main", "index": 0 },
+          { "node": "Send Approval SMS — Twilio", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Send Rejection Email — Brevo", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Send Approval Email — Brevo": {
+      "main": [
+        [{ "node": "Send Telegram — Approved", "type": "main", "index": 0 }]
+      ]
+    },
+    "Send Telegram — Approved": {
+      "main": [
+        [{ "node": "Respond — OK", "type": "main", "index": 0 }]
+      ]
+    },
+    "Send Rejection Email — Brevo": {
+      "main": [
+        [{ "node": "Respond — OK", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "pinData": {}
+}

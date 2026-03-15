@@ -1,0 +1,220 @@
+{
+  "name": "COIN Education — 12 — Payment Plan Reminder",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "tags": [
+    { "name": "COIN Education" }
+  ],
+  "nodes": [
+    {
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Query Upcoming Installments",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://lzegdrzoyyimfgwgqnlo.supabase.co/rest/v1/rpc/get_upcoming_installments",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": []
+        },
+        "options": {}
+      }
+    },
+    {
+      "name": "Fallback - Query Payments Directly",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 500],
+      "parameters": {
+        "method": "GET",
+        "url": "https://lzegdrzoyyimfgwgqnlo.supabase.co/rest/v1/payments",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "status", "value": "eq.pending" },
+            { "name": "fee_type", "value": "eq.installment" },
+            { "name": "select", "value": "id,user_id,amount_cents,created_at,enrollment_id" }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "name": "Filter Due Soon",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 500],
+      "parameters": {
+        "jsCode": "// Filter for installments due within 7 days\n// Since we don't have a due_date column, we check 30 days from creation\nconst now = new Date();\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const createdAt = new Date(item.json.created_at);\n  // Installment 2 is due 30 days after installment 1 creation\n  const dueDate = new Date(createdAt.getTime() + 30 * 24 * 60 * 60 * 1000);\n  const daysUntilDue = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));\n\n  if (daysUntilDue === 7 || daysUntilDue === 3 || daysUntilDue === 1) {\n    results.push({\n      json: {\n        ...item.json,\n        due_date: dueDate.toISOString().split('T')[0],\n        days_until_due: daysUntilDue,\n        reminder_type: daysUntilDue === 1 ? 'final' : daysUntilDue === 3 ? 'urgent' : 'upcoming'\n      }\n    });\n  }\n}\n\nif (results.length === 0) {\n  // Return empty to stop execution\n  return [{ json: { no_reminders: true } }];\n}\n\nreturn results;"
+      }
+    },
+    {
+      "name": "Check If Empty",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [960, 500],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "1",
+              "leftValue": "={{ $json.no_reminders }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "notTrue" }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "name": "Fetch Student Profile",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 400],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://lzegdrzoyyimfgwgqnlo.supabase.co/rest/v1/profiles?id=eq.{{ $json.user_id }}&select=first_name,last_name,email,phone",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "name": "Prepare Reminder Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1440, 400],
+      "parameters": {
+        "jsCode": "const payment = $('Filter Due Soon').item.json;\nconst profileData = $input.first().json;\nconst profile = Array.isArray(profileData) ? profileData[0] : profileData;\n\nconst firstName = profile?.first_name || 'Student';\nconst email = profile?.email || '';\nconst phone = profile?.phone || '';\nconst amount = (payment.amount_cents / 100).toFixed(2);\nconst dueDate = payment.due_date;\nconst daysLeft = payment.days_until_due;\n\nlet urgencyText = '';\nif (daysLeft === 1) {\n  urgencyText = 'FINAL REMINDER: Your payment is due tomorrow.';\n} else if (daysLeft === 3) {\n  urgencyText = `Your payment is due in ${daysLeft} days.`;\n} else {\n  urgencyText = `Your payment is due in ${daysLeft} days.`;\n}\n\nreturn [{\n  json: {\n    first_name: firstName,\n    email: email,\n    phone: phone,\n    amount: `$${amount}`,\n    amount_cents: payment.amount_cents,\n    due_date: dueDate,\n    days_until_due: daysLeft,\n    urgency_text: urgencyText,\n    reminder_type: payment.reminder_type,\n    user_id: payment.user_id\n  }\n}];"
+      }
+    },
+    {
+      "name": "Send Reminder Email (Brevo)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1700, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.brevo.com/v3/smtp/email",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "api-key", "value": "={{ $env.BREVO_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"sender\": { \"name\": \"COIN Education\", \"email\": \"admissions@coineducation.com\" },\n  \"to\": [{ \"email\": \"{{ $json.email }}\", \"name\": \"{{ $json.first_name }}\" }],\n  \"subject\": \"Payment Reminder — {{ $json.amount }} due {{ $json.due_date }}\",\n  \"htmlContent\": \"<html><body><h2>Payment Reminder</h2><p>Hi {{ $json.first_name }},</p><p>{{ $json.urgency_text }}</p><p><strong>Amount Due:</strong> {{ $json.amount }}<br><strong>Due Date:</strong> {{ $json.due_date }}</p><p>Please log in to your <a href='https://portal.coineducation.com/student/payments'>student portal</a> to make your payment.</p><p>If you have already made this payment, please disregard this reminder.</p><p>Questions? Contact us at <a href='mailto:admissions@coineducation.com'>admissions@coineducation.com</a> or (678) 541-8699.</p><p>— COIN Education</p></body></html>\"\n}",
+        "options": {}
+      }
+    },
+    {
+      "name": "Send Reminder SMS (Twilio)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1700, 500],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.twilio.com/2010-04-01/Accounts/{{ $env.TWILIO_ACCOUNT_SID }}/Messages.json",
+        "authentication": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "From", "value": "={{ $env.TWILIO_PHONE_NUMBER }}" },
+            { "name": "To", "value": "={{ $json.phone }}" },
+            { "name": "Body", "value": "=COIN Education Payment Reminder: {{ $json.urgency_text }} Amount: {{ $json.amount }}, Due: {{ $json.due_date }}. Pay now at portal.coineducation.com/student/payments" }
+          ]
+        },
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [{ "node": "Fallback - Query Payments Directly", "type": "main", "index": 0 }]
+      ]
+    },
+    "Fallback - Query Payments Directly": {
+      "main": [
+        [{ "node": "Filter Due Soon", "type": "main", "index": 0 }]
+      ]
+    },
+    "Filter Due Soon": {
+      "main": [
+        [{ "node": "Check If Empty", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check If Empty": {
+      "main": [
+        [{ "node": "Fetch Student Profile", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Fetch Student Profile": {
+      "main": [
+        [{ "node": "Prepare Reminder Data", "type": "main", "index": 0 }]
+      ]
+    },
+    "Prepare Reminder Data": {
+      "main": [
+        [
+          { "node": "Send Reminder Email (Brevo)", "type": "main", "index": 0 },
+          { "node": "Send Reminder SMS (Twilio)", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "extends": "@simplilms/config/tsconfig/base",
+  "compilerOptions": {
+    "module": "esnext",
+    "target": "ES2017",
+    "outDir": "dist"
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}

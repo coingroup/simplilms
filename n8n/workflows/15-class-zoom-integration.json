@@ -1,0 +1,224 @@
+{
+  "name": "COIN Education — 15 — Class/Zoom Integration",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "tags": [
+    { "name": "COIN Education" }
+  ],
+  "nodes": [
+    {
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "*/15 * * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 500],
+      "parameters": {
+        "path": "coin-class-start",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "coin-class-start"
+    },
+    {
+      "name": "Query Active Classes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "https://lzegdrzoyyimfgwgqnlo.supabase.co/rest/v1/classes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "is_active", "value": "eq.true" },
+            { "name": "select", "value": "id,name,schedule,zoom_meeting_id,zoom_join_url,zoom_start_url,instructor_id" }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "name": "Check For Classes Starting Soon",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [740, 300],
+      "parameters": {
+        "jsCode": "// Check which classes are starting within the next 15 minutes\nconst classes = $input.all().map(item => item.json);\n// If response is a single array, unwrap it\nconst classList = Array.isArray(classes[0]) ? classes[0] : classes;\n\nconst now = new Date();\nconst EST_OFFSET = -5; // EST is UTC-5\nconst nowEST = new Date(now.getTime() + (now.getTimezoneOffset() + EST_OFFSET * 60) * 60 * 1000);\nconst currentDay = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][nowEST.getDay()];\nconst currentTime = `${String(nowEST.getHours()).padStart(2, '0')}:${String(nowEST.getMinutes()).padStart(2, '0')}`;\n\nconst startingSoon = [];\n\nfor (const cls of classList) {\n  if (!cls.schedule || !cls.zoom_join_url) continue;\n  \n  const schedule = typeof cls.schedule === 'string' ? JSON.parse(cls.schedule) : cls.schedule;\n  const classDays = schedule.days || [];\n  const startTime = schedule.startTime || '';\n  \n  if (!classDays.includes(currentDay)) continue;\n  \n  // Check if class starts within the next 15 minutes\n  const [classHour, classMin] = startTime.split(':').map(Number);\n  const classMinutes = classHour * 60 + classMin;\n  const nowMinutes = nowEST.getHours() * 60 + nowEST.getMinutes();\n  const diff = classMinutes - nowMinutes;\n  \n  if (diff >= 0 && diff <= 15) {\n    startingSoon.push({\n      json: {\n        class_id: cls.id,\n        class_name: cls.name,\n        zoom_join_url: cls.zoom_join_url,\n        zoom_start_url: cls.zoom_start_url,\n        zoom_meeting_id: cls.zoom_meeting_id,\n        instructor_id: cls.instructor_id,\n        start_time: startTime,\n        current_day: currentDay,\n        minutes_until_start: diff\n      }\n    });\n  }\n}\n\nif (startingSoon.length === 0) {\n  return [{ json: { no_classes: true } }];\n}\n\nreturn startingSoon;"
+      }
+    },
+    {
+      "name": "Has Classes Starting",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [980, 300],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "1",
+              "leftValue": "={{ $json.no_classes }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "notTrue" }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "name": "Fetch Enrolled Students",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1220, 200],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://lzegdrzoyyimfgwgqnlo.supabase.co/rest/v1/class_enrollments?class_id=eq.{{ $json.class_id }}&status=eq.enrolled&select=student_id",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "name": "Send In-Portal Notifications",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1460, 200],
+      "parameters": {
+        "jsCode": "// Create in-portal messages for each enrolled student\nconst classData = $('Has Classes Starting').item.json;\nconst enrollments = $input.all().map(item => item.json);\n// Handle both array and single-item response\nconst studentIds = Array.isArray(enrollments[0]) \n  ? enrollments[0].map(e => e.student_id) \n  : enrollments.map(e => e.student_id);\n\nconst messages = studentIds.map(studentId => ({\n  tenant_id: '00000000-0000-0000-0000-000000000001',\n  sender_id: classData.instructor_id,\n  recipient_id: studentId,\n  subject: `Class Starting: ${classData.class_name}`,\n  body: `Your class \"${classData.class_name}\" is starting ${classData.minutes_until_start === 0 ? 'now' : `in ${classData.minutes_until_start} minutes`}.\\n\\nJoin via Zoom: ${classData.zoom_join_url}`,\n  message_type: 'class_reminder',\n  is_system: true,\n  is_read: false\n}));\n\nreturn [{ json: { messages, student_count: studentIds.length, class_name: classData.class_name } }];"
+      }
+    },
+    {
+      "name": "Insert Portal Messages",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1700, 200],
+      "parameters": {
+        "method": "POST",
+        "url": "https://lzegdrzoyyimfgwgqnlo.supabase.co/rest/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.messages) }}",
+        "options": {}
+      }
+    },
+    {
+      "name": "Send Telegram Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1700, 400],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"{{ $env.TELEGRAM_CHAT_ID }}\",\n  \"text\": \"📚 Class Starting\\n\\nClass: {{ $json.class_name }}\\nStudents notified: {{ $json.student_count }}\\n\\nIn-portal class reminder messages have been sent.\",\n  \"parse_mode\": \"HTML\"\n}",
+        "options": {}
+      }
+    },
+    {
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [500, 500],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"ok\", \"message\": \"Class start notification triggered\" }",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [{ "node": "Query Active Classes", "type": "main", "index": 0 }]
+      ]
+    },
+    "Webhook Trigger": {
+      "main": [
+        [
+          { "node": "Query Active Classes", "type": "main", "index": 0 },
+          { "node": "Webhook Response", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Query Active Classes": {
+      "main": [
+        [{ "node": "Check For Classes Starting Soon", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check For Classes Starting Soon": {
+      "main": [
+        [{ "node": "Has Classes Starting", "type": "main", "index": 0 }]
+      ]
+    },
+    "Has Classes Starting": {
+      "main": [
+        [{ "node": "Fetch Enrolled Students", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Fetch Enrolled Students": {
+      "main": [
+        [{ "node": "Send In-Portal Notifications", "type": "main", "index": 0 }]
+      ]
+    },
+    "Send In-Portal Notifications": {
+      "main": [
+        [
+          { "node": "Insert Portal Messages", "type": "main", "index": 0 },
+          { "node": "Send Telegram Alert", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  }
+}
