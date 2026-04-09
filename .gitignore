@@ -68,3 +68,6 @@ pnpm-lock.yaml
 *.seed
 *.pid.lock
 .cache/
+
+# Claude context — explicitly tracked
+!claude-context/
