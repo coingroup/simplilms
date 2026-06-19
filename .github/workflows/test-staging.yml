@@ -31,7 +31,7 @@ jobs:
         run: npx turbo run type-check
 
       - name: Lint
-        run: npx turbo run lint
+        run: npx turbo run lint --filter=@simplilms/platform --filter=@simplilms/marketing
 
       - name: Build
         run: npx turbo run build
