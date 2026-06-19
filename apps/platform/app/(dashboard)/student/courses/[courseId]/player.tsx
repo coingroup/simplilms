@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useEffect, useCallback } from "react";
 import { Button, Card, CardContent, Badge } from "@simplilms/ui";
+import { sanitizeHtml } from "@simplilms/core/lib/sanitize";
 import {
   CheckCircle2,
   Circle,
@@ -338,7 +339,7 @@ function LessonContent({
       return content.body ? (
         <div
           className="prose prose-sm max-w-none"
-          dangerouslySetInnerHTML={{ __html: content.body as string }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(content.body as string) }}
         />
       ) : (
         <p className="text-sm text-muted-foreground italic">
