@@ -8,6 +8,24 @@ import {
   type ChatMessage,
 } from "@simplilms/core/lib/ai-service";
 
+const MAX_MESSAGE_LENGTH = 10_000;
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const MAX_REQUESTS_PER_WINDOW = 10;
+
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(userId);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(userId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= MAX_REQUESTS_PER_WINDOW) return false;
+  entry.count++;
+  return true;
+}
+
 /**
  * POST /api/ai/interview
  *
@@ -29,6 +47,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  if (!checkRateLimit(user.user.id)) {
+    return new Response(
+      JSON.stringify({ error: "Too many requests. Please wait a moment." }),
+      { status: 429, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   let body: { interviewId: string; userMessage: string };
   try {
     body = await request.json();
@@ -43,6 +68,13 @@ export async function POST(request: NextRequest) {
   if (!interviewId || !userMessage) {
     return new Response(
       JSON.stringify({ error: "interviewId and userMessage are required" }),
+      { status: 400, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  if (userMessage.length > MAX_MESSAGE_LENGTH) {
+    return new Response(
+      JSON.stringify({ error: `Message too long. Maximum ${MAX_MESSAGE_LENGTH} characters.` }),
       { status: 400, headers: { "Content-Type": "application/json" } }
     );
   }
@@ -153,9 +185,8 @@ export async function POST(request: NextRequest) {
           fullMessage: cleanMessage,
         });
       } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "AI service unavailable";
-        sendEvent({ type: "error", message: errorMessage });
+        console.error("AI interview streaming error:", err);
+        sendEvent({ type: "error", message: "AI service unavailable. Please try again." });
       } finally {
         controller.close();
       }
