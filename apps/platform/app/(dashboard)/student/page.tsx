@@ -9,6 +9,8 @@ import {
   getStudentClasses,
   formatCurrency,
 } from "@simplilms/core";
+import { getStudentGamificationSummary } from "@simplilms/core/actions/gamification";
+import { GamificationSummaryCard } from "@simplilms/core/components/gamification/gamification-summary";
 
 export const metadata = {
   title: "Student Dashboard",
@@ -17,12 +19,13 @@ export const metadata = {
 export default async function StudentDashboardPage() {
   const user = await requireRole(["super_admin", "student"]);
 
-  const [enrollments, payments, programs, unreadMessages, classes] = await Promise.all([
+  const [enrollments, payments, programs, unreadMessages, classes, gamification] = await Promise.all([
     getEnrollmentsByUserId(user.user.id),
     getPaymentsByUserId(user.user.id),
     getPrograms(),
     getUnreadMessageCount(user.user.id),
     getStudentClasses(user.user.id),
+    getStudentGamificationSummary(),
   ]);
 
   const activeEnrollment = enrollments.find(
@@ -99,6 +102,8 @@ export default async function StudentDashboardPage() {
           );
         })}
       </div>
+
+      <GamificationSummaryCard summary={gamification} />
     </div>
   );
 }

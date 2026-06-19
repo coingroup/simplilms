@@ -4,6 +4,10 @@ import { getEnrollments, formatDateTime } from "@simplilms/core";
 import { Badge } from "@simplilms/ui";
 import { GraduationCap } from "lucide-react";
 
+export const metadata = {
+  title: "Enrollments -- Admin",
+};
+
 interface EnrollmentsPageProps {
   searchParams: Promise<{
     status?: string;

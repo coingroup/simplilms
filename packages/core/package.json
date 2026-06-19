@@ -8,6 +8,8 @@
     ".": "./src/index.ts",
     "./components/*": "./src/components/*.tsx",
     "./components/ai-course/*": "./src/components/ai-course/*.tsx",
+    "./components/discussions/*": "./src/components/discussions/*.tsx",
+    "./components/live-classes/*": "./src/components/live-classes/*.tsx",
     "./lib/*": "./src/lib/*.ts",
     "./actions/*": "./src/actions/*.ts",
     "./context": "./src/context/index.ts"
@@ -19,6 +21,12 @@
       ],
       "components/ai-course/*": [
         "./src/components/ai-course/*.tsx"
+      ],
+      "components/discussions/*": [
+        "./src/components/discussions/*.tsx"
+      ],
+      "components/live-classes/*": [
+        "./src/components/live-classes/*.tsx"
       ],
       "lib/*": [
         "./src/lib/*.ts"

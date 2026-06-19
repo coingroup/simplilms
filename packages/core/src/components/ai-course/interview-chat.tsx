@@ -311,6 +311,7 @@ export function InterviewChat({ interview }: InterviewChatProps) {
                 onClick={handleSend}
                 disabled={!inputText.trim() || isLoading || isGenerating}
                 size="icon"
+                aria-label="Send message"
               >
                 <Send className="h-4 w-4" />
               </Button>

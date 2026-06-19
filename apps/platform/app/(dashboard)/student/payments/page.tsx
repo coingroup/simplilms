@@ -5,6 +5,10 @@ import { PaymentHistoryTable } from "@simplilms/core/components/payment/payment-
 import { InstallmentPayButton } from "@simplilms/core/components/payment/installment-pay-button";
 import { DollarSign, AlertTriangle, CheckCircle2 } from "lucide-react";
 
+export const metadata = {
+  title: "Payments -- Student Portal",
+};
+
 export default async function StudentPaymentsPage() {
   const { user, error } = await getUser();
   if (error || !user) redirect("/login");
