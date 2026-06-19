@@ -16,6 +16,8 @@ import {
   Building2,
   Award,
   Layers,
+  Trophy,
+  Video,
   type LucideIcon,
 } from "lucide-react";
 
@@ -40,6 +42,7 @@ export const SIDEBAR_NAV: Record<UserRole, NavItem[]> = {
     { label: "Certificates", href: "/admin/certificates", icon: Award },
     { label: "Sectors", href: "/admin/sectors", icon: Layers },
     { label: "Classes", href: "/admin/classes", icon: Calendar },
+    { label: "Live Classes", href: "/admin/live", icon: Video },
     { label: "Messages", href: "/admin/messages", icon: MessageSquare },
     { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
     { label: "Tenants", href: "/admin/tenants", icon: Building2 },
@@ -56,6 +59,7 @@ export const SIDEBAR_NAV: Record<UserRole, NavItem[]> = {
     { label: "Courses", href: "/teacher/courses", icon: GraduationCap },
     { label: "Classes", href: "/teacher/classes", icon: BookOpen },
     { label: "Attendance", href: "/teacher/attendance", icon: ClipboardList },
+    { label: "Live Classes", href: "/teacher/live", icon: Video },
     { label: "Earnings", href: "/teacher/earnings", icon: DollarSign },
     { label: "Messages", href: "/teacher/messages", icon: MessageSquare },
   ],
@@ -64,6 +68,7 @@ export const SIDEBAR_NAV: Record<UserRole, NavItem[]> = {
     { label: "Courses", href: "/teacher/courses", icon: GraduationCap },
     { label: "Classes", href: "/teacher/classes", icon: BookOpen },
     { label: "Attendance", href: "/teacher/attendance", icon: ClipboardList },
+    { label: "Live Classes", href: "/teacher/live", icon: Video },
     { label: "Messages", href: "/teacher/messages", icon: MessageSquare },
   ],
   student: [
@@ -71,8 +76,11 @@ export const SIDEBAR_NAV: Record<UserRole, NavItem[]> = {
     { label: "Profile", href: "/profile", icon: User },
     { label: "Courses", href: "/student/courses", icon: GraduationCap },
     { label: "Certificates", href: "/student/certificates", icon: Award },
+    { label: "Achievements", href: "/student/achievements", icon: Trophy },
+    { label: "Leaderboard", href: "/student/leaderboard", icon: BarChart3 },
     { label: "Payments", href: "/student/payments", icon: DollarSign },
     { label: "Messages", href: "/student/messages", icon: MessageSquare },
     { label: "Classes", href: "/student/classes", icon: BookOpen },
+    { label: "Live Classes", href: "/student/live", icon: Video },
   ],
 };
