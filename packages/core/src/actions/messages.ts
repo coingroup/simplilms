@@ -17,7 +17,7 @@ export async function markMessageAsRead(messageId: string): Promise<{ success: b
 
     const supabase = await createServerClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("messages")
       .update({
         is_read: true,
@@ -54,7 +54,7 @@ export async function markAllMessagesAsRead(): Promise<{ success: boolean; error
 
     const supabase = await createServerClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("messages")
       .update({
         is_read: true,
@@ -106,7 +106,7 @@ export async function sendMessage(data: {
     const tenantId = getTenantId();
     const supabase = await createServerClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("messages")
       .insert({
         tenant_id: tenantId,
@@ -162,7 +162,7 @@ export async function sendBroadcastMessage(data: {
 
     // Fetch all student profiles
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: students, error: fetchError } = await (supabase as any)
+    const { data: students, error: fetchError } = await supabase
       .from("profiles")
       .select("id")
       .eq("role", "student");
@@ -189,7 +189,7 @@ export async function sendBroadcastMessage(data: {
     }));
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: insertError } = await (supabase as any)
+    const { error: insertError } = await supabase
       .from("messages")
       .insert(messages);
 

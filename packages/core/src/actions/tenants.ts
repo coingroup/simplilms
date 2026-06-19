@@ -34,7 +34,7 @@ export interface WhitelabelTenantRow {
  */
 export async function getWhitelabelTenants(): Promise<WhitelabelTenantRow[]> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("whitelabel_tenants")
     .select("*")
     .order("created_at", { ascending: false });
@@ -54,7 +54,7 @@ export async function getWhitelabelTenantById(
   id: string
 ): Promise<WhitelabelTenantRow | null> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("whitelabel_tenants")
     .select("*")
     .eq("id", id)
@@ -108,9 +108,10 @@ export async function createWhitelabelTenant(
     notes: (formData.get("notes") as string)?.trim() || null,
   };
 
-  const { data, error } = await (supabase as any)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await supabase
     .from("whitelabel_tenants")
-    .insert(insertData)
+    .insert(insertData as any)
     .select("id")
     .single();
 
@@ -177,9 +178,10 @@ export async function updateWhitelabelTenant(
       }
     }
 
-    const { error } = await (supabase as any)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await supabase
       .from("whitelabel_tenants")
-      .update(updateData)
+      .update(updateData as any)
       .eq("id", tenantId);
 
     if (error) {

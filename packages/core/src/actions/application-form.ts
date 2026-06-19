@@ -46,9 +46,10 @@ export async function saveDraft(
 
     if (existingApplicationId) {
       // Update existing draft
-      const { error } = await (supabase as any)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await supabase
         .from("applications")
-        .update(cleanPayload)
+        .update(cleanPayload as any)
         .eq("id", existingApplicationId)
         .eq("status", "draft");
 
@@ -60,9 +61,10 @@ export async function saveDraft(
       return { success: true, applicationId: existingApplicationId };
     } else {
       // Insert new draft
-      const { data, error } = await (supabase as any)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await supabase
         .from("applications")
-        .insert(cleanPayload)
+        .insert(cleanPayload as any)
         .select("id")
         .single();
 
@@ -121,7 +123,7 @@ export async function submitApplication(
       isaFields.isa_consent_ip_address = ip;
     }
 
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("applications")
       .update({
         status: "submitted",
@@ -232,7 +234,7 @@ export async function uploadDocument(
     const supabase = await createServerClient();
     const storagePath = getDocumentStoragePath(prospectId, file.name);
 
-    const { error } = await (supabase as any).storage
+    const { error } = await supabase.storage
       .from(STORAGE_BUCKET)
       .upload(storagePath, file, {
         contentType: file.type,
