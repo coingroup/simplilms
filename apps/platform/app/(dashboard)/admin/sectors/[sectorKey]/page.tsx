@@ -23,24 +23,24 @@ export default async function SectorDetailPage({
   await requireRole(["super_admin"]);
 
   const { sectorKey } = await params;
-  const module = await getSectorModuleByKey(sectorKey);
+  const sectorModule = await getSectorModuleByKey(sectorKey);
 
-  if (!module) {
+  if (!sectorModule) {
     redirect("/admin/sectors");
   }
 
   // Verify tenant is subscribed
   const subscriptions = await getTenantSectorSubscriptions();
   const isSubscribed = subscriptions.some(
-    (s) => s.sector_module_id === module.id
+    (s) => s.sector_module_id === sectorModule.id
   );
 
-  const frameworks = Array.isArray(module.compliance_frameworks)
-    ? module.compliance_frameworks
+  const frameworks = Array.isArray(sectorModule.compliance_frameworks)
+    ? sectorModule.compliance_frameworks
     : [];
 
-  const standards = Array.isArray(module.curriculum_standards)
-    ? module.curriculum_standards
+  const standards = Array.isArray(sectorModule.curriculum_standards)
+    ? sectorModule.curriculum_standards
     : [];
 
   return (
@@ -63,7 +63,7 @@ export default async function SectorDetailPage({
         </Link>
         <span className="text-sm text-gray-300">/</span>
         <span className="text-sm text-gray-700 font-medium">
-          {module.display_name}
+          {sectorModule.display_name}
         </span>
       </div>
 
@@ -73,14 +73,14 @@ export default async function SectorDetailPage({
           <div className="flex items-center gap-2">
             <Layers className="h-6 w-6 text-primary" />
             <h1 className="text-2xl font-bold text-gray-900">
-              {module.display_name}
+              {sectorModule.display_name}
             </h1>
             {isSubscribed && (
               <Badge className="text-xs">Active</Badge>
             )}
           </div>
-          {module.description && (
-            <p className="text-sm text-gray-500 mt-1">{module.description}</p>
+          {sectorModule.description && (
+            <p className="text-sm text-gray-500 mt-1">{sectorModule.description}</p>
           )}
         </div>
       </div>
@@ -149,15 +149,15 @@ export default async function SectorDetailPage({
       {/* Question Bank */}
       {isSubscribed ? (
         <QuestionBankBrowser
-          sectorModuleId={module.id}
-          sectorName={module.display_name}
+          sectorModuleId={sectorModule.id}
+          sectorName={sectorModule.display_name}
         />
       ) : (
         <Card>
           <CardContent className="py-12 text-center">
             <Layers className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
             <p className="text-sm text-muted-foreground">
-              Activate this sector module to access the question bank.
+              Activate this sector sectorModule to access the question bank.
             </p>
             <Link
               href="/admin/sectors"

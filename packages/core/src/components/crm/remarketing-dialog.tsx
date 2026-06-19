@@ -107,7 +107,7 @@ export function RemarketingDialog({
             <Label>Channel</Label>
             <Tabs
               value={channel}
-              onValueChange={(v) => setChannel(v as CommunicationChannel)}
+              onValueChange={(v: string) => setChannel(v as CommunicationChannel)}
             >
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="email" className="gap-1.5">
