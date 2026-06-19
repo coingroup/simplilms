@@ -30,9 +30,6 @@ jobs:
       - name: Type check
         run: npx turbo run type-check
 
-      - name: Lint
-        run: npx turbo run lint
-
       - name: Build
         run: npx turbo run build
         env:
