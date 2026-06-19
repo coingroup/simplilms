@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { sanitizeHtml } from "@simplilms/core/lib/sanitize";
 import {
   Button,
   Input,
@@ -323,7 +324,7 @@ export function LessonEditorClient({
           <CardContent>
             <div
               className="prose prose-sm max-w-none"
-              dangerouslySetInnerHTML={{ __html: textBody }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(textBody) }}
             />
           </CardContent>
         </Card>
