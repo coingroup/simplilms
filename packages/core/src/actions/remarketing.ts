@@ -24,7 +24,7 @@ export async function sendRemarketing(data: {
     const supabase = await createServerClient();
 
     // Fetch prospect
-    const { data: prospect, error: prospectError } = await (supabase as any)
+    const { data: prospect, error: prospectError } = await supabase
       .from("prospects")
       .select("*")
       .eq("id", data.prospectId)
@@ -35,7 +35,7 @@ export async function sendRemarketing(data: {
     }
 
     // Fetch template
-    const { data: template, error: templateError } = await (supabase as any)
+    const { data: template, error: templateError } = await supabase
       .from("communication_templates")
       .select("*")
       .eq("id", data.templateId)
@@ -70,7 +70,7 @@ export async function sendRemarketing(data: {
     const trackingId = crypto.randomUUID();
 
     // Create communication log entry
-    await (supabase as any).from("communication_log").insert({
+    await supabase.from("communication_log").insert({
       tenant_id: user.tenantId,
       template_id: data.templateId,
       recipient_id: data.prospectId,

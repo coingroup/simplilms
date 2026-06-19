@@ -96,7 +96,7 @@ export async function updateOrganizationSettings(
   const tenantId = getTenantId();
 
   // Get current values for audit log
-  const { data: current } = await (supabase as any)
+  const { data: current } = await supabase
     .from("tenants")
     .select("name, description, contact_email, contact_phone, website_url, location, trademark")
     .eq("id", tenantId)
@@ -113,7 +113,7 @@ export async function updateOrganizationSettings(
     updated_at: new Date().toISOString(),
   };
 
-  const { error } = await (supabase as any)
+  const { error } = await supabase
     .from("tenants")
     .update(updatePayload)
     .eq("id", tenantId);
@@ -168,7 +168,7 @@ export async function updateBrandingSettings(
   const tenantId = getTenantId();
 
   // Get current values for audit log
-  const { data: current } = await (supabase as any)
+  const { data: current } = await supabase
     .from("tenants")
     .select("logo_url, logo_fallback_letter, primary_color, secondary_color, accent_color")
     .eq("id", tenantId)
@@ -183,7 +183,7 @@ export async function updateBrandingSettings(
     updated_at: new Date().toISOString(),
   };
 
-  const { error } = await (supabase as any)
+  const { error } = await supabase
     .from("tenants")
     .update(updatePayload)
     .eq("id", tenantId);
@@ -227,13 +227,13 @@ export async function updateFeatureFlags(
   const tenantId = getTenantId();
 
   // Get current flags for audit log
-  const { data: current } = await (supabase as any)
+  const { data: current } = await supabase
     .from("tenants")
     .select("feature_flags")
     .eq("id", tenantId)
     .single();
 
-  const { error } = await (supabase as any)
+  const { error } = await supabase
     .from("tenants")
     .update({
       feature_flags: flags,
@@ -280,16 +280,16 @@ export async function updateNotificationSettings(
   const tenantId = getTenantId();
 
   // Get current settings for audit log
-  const { data: current } = await (supabase as any)
+  const { data: current } = await supabase
     .from("tenants")
     .select("notification_settings")
     .eq("id", tenantId)
     .single();
 
-  const { error } = await (supabase as any)
+  const { error } = await supabase
     .from("tenants")
     .update({
-      notification_settings: settings,
+      notification_settings: settings as unknown as import("@simplilms/database").Json,
       updated_at: new Date().toISOString(),
     })
     .eq("id", tenantId);

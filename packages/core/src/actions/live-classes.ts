@@ -113,6 +113,7 @@ export async function getUpcomingLiveSessions(options?: {
   const supabase = await createServerClient();
   const now = new Date().toISOString();
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query = (supabase as any)
     .from("live_class_sessions")
     .select(SESSION_SELECT)
@@ -148,6 +149,7 @@ export async function getPastLiveSessions(options?: {
 
   const supabase = await createServerClient();
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query = (supabase as any)
     .from("live_class_sessions")
     .select(SESSION_SELECT)
@@ -178,7 +180,7 @@ export async function getAllLiveSessions(): Promise<LiveSessionRow[]> {
   if (authError || !user || user.role !== "super_admin") return [];
 
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("live_class_sessions")
     .select(SESSION_SELECT)
     .order("scheduled_at", { ascending: false });
@@ -201,7 +203,7 @@ export async function getLiveSession(
   if (authError || !user) return null;
 
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("live_class_sessions")
     .select(SESSION_SELECT)
     .eq("id", sessionId)
@@ -256,6 +258,7 @@ export async function createLiveSession(
     status: "scheduled" as LiveSessionStatus,
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: created, error } = await (supabase as any)
     .from("live_class_sessions")
     .insert(payload)
@@ -298,12 +301,14 @@ export async function updateLiveSession(
   const supabase = await createServerClient();
 
   // Teachers can only update their own sessions
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabaseAny = supabase as any;
   const filter = isAdmin
-    ? (supabase as any)
+    ? supabaseAny
         .from("live_class_sessions")
         .update(data)
         .eq("id", sessionId)
-    : (supabase as any)
+    : supabaseAny
         .from("live_class_sessions")
         .update(data)
         .eq("id", sessionId)
@@ -355,6 +360,7 @@ export async function addRecording(
     status: "completed" as LiveSessionStatus,
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query = (supabase as any)
     .from("live_class_sessions")
     .update(payload)

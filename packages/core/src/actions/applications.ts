@@ -24,7 +24,7 @@ export async function approveApplication(
     // Generate a secure payment token for the semi-public payment page
     const paymentToken = generatePaymentToken();
 
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("applications")
       .update({
         status: "approved",
@@ -45,7 +45,7 @@ export async function approveApplication(
     const paymentUrl = `${portalUrl}/payment?token=${paymentToken}`;
 
     // Audit log
-    await (supabase as any).from("audit_log").insert({
+    await supabase.from("audit_log").insert({
       tenant_id: user.tenantId,
       actor_id: user.user.id,
       action: "approve_application",
@@ -58,7 +58,7 @@ export async function approveApplication(
     const webhookUrl = process.env.N8N_WEBHOOK_APPLICATION_REVIEW;
     if (webhookUrl) {
       // Fetch application data for the webhook payload
-      const { data: appData } = await (supabase as any)
+      const { data: appData } = await supabase
         .from("applications")
         .select("first_name, last_name, email, phone, program_id")
         .eq("id", applicationId)
@@ -114,7 +114,7 @@ export async function rejectApplication(
 
     const supabase = await createServerClient();
 
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("applications")
       .update({
         status: "rejected",
@@ -130,7 +130,7 @@ export async function rejectApplication(
     }
 
     // Audit log
-    await (supabase as any).from("audit_log").insert({
+    await supabase.from("audit_log").insert({
       tenant_id: user.tenantId,
       actor_id: user.user.id,
       action: "reject_application",

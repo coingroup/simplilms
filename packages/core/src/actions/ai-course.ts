@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createServerClient, getUser } from "@simplilms/auth/server";
 import { getTenantId } from "../lib/tenant";
+import type { Json } from "@simplilms/database";
 import {
   getAnthropicClient,
   getInterviewSystemPrompt,
@@ -68,7 +69,7 @@ export async function getAiInterviews(): Promise<AiCourseInterviewRow[]> {
   if (user.role !== "super_admin") return [];
 
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("ai_course_interviews")
     .select("*")
     .eq("tenant_id", getTenantId())
@@ -78,7 +79,12 @@ export async function getAiInterviews(): Promise<AiCourseInterviewRow[]> {
     console.error("Error fetching AI interviews:", error);
     return [];
   }
-  return (data || []) as AiCourseInterviewRow[];
+  return (data || []).map((row) => ({
+    ...row,
+    messages: row.messages as unknown as import("../lib/ai-service").ChatMessage[],
+    uploaded_documents: row.uploaded_documents as unknown as AiCourseInterviewRow["uploaded_documents"],
+    generated_outline: row.generated_outline as unknown as import("../lib/ai-service").GeneratedOutline | null,
+  })) as AiCourseInterviewRow[];
 }
 
 export async function getAiInterview(
@@ -89,7 +95,7 @@ export async function getAiInterview(
   if (user.role !== "super_admin") return null;
 
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("ai_course_interviews")
     .select("*")
     .eq("id", id)
@@ -100,7 +106,12 @@ export async function getAiInterview(
     console.error("Error fetching AI interview:", error);
     return null;
   }
-  return data as AiCourseInterviewRow;
+  return {
+    ...data,
+    messages: data.messages as unknown as ChatMessage[],
+    uploaded_documents: data.uploaded_documents as unknown as AiCourseInterviewRow["uploaded_documents"],
+    generated_outline: data.generated_outline as unknown as GeneratedOutline | null,
+  } as AiCourseInterviewRow;
 }
 
 // ============================================================
@@ -134,7 +145,7 @@ export async function startInterview(formData: FormData): Promise<{
   // If document mode, skip interview — go straight to review
   if (generationMode === "document") {
     const supabase = await createServerClient();
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from("ai_course_interviews")
       .insert({
         tenant_id: tenantId,
@@ -146,7 +157,7 @@ export async function startInterview(formData: FormData): Promise<{
         generation_mode: "document",
         sector_key: sectorKey,
         status: "interviewing", // Will change to generating when docs are uploaded
-        messages: [],
+        messages: [] as unknown as Json,
         system_prompt: null,
       })
       .select("id")
@@ -199,7 +210,7 @@ export async function startInterview(formData: FormData): Promise<{
     ];
 
     const supabase = await createServerClient();
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from("ai_course_interviews")
       .insert({
         tenant_id: tenantId,
@@ -211,7 +222,7 @@ export async function startInterview(formData: FormData): Promise<{
         generation_mode: "interview",
         sector_key: sectorKey,
         status: "interviewing",
-        messages,
+        messages: messages as unknown as Json,
         system_prompt: systemPrompt,
         total_input_tokens: response.usage.input_tokens,
         total_output_tokens: response.usage.output_tokens,
@@ -261,7 +272,7 @@ export async function sendInterviewMessage(
     };
 
   const supabase = await createServerClient();
-  const { data: interview, error: fetchError } = await (supabase as any)
+  const { data: interview, error: fetchError } = await supabase
     .from("ai_course_interviews")
     .select("*")
     .eq("id", interviewId)
@@ -286,7 +297,7 @@ export async function sendInterviewMessage(
 
   const now = new Date().toISOString();
   const updatedMessages: ChatMessage[] = [
-    ...(interview.messages as ChatMessage[]),
+    ...(interview.messages as unknown as ChatMessage[]),
     { role: "user" as const, content: userMessage, timestamp: now },
   ];
 
@@ -331,10 +342,10 @@ export async function sendInterviewMessage(
       timestamp: new Date().toISOString(),
     });
 
-    const { error: updateError } = await (supabase as any)
+    const { error: updateError } = await supabase
       .from("ai_course_interviews")
       .update({
-        messages: updatedMessages,
+        messages: updatedMessages as unknown as Json,
         total_input_tokens:
           (interview.total_input_tokens || 0) +
           response.usage.input_tokens,
@@ -377,7 +388,7 @@ export async function generateCourseFromInterview(
   if (user.role !== "super_admin") return { outline: null, error: "Unauthorized" };
 
   const supabase = await createServerClient();
-  const { data: interview, error: fetchError } = await (supabase as any)
+  const { data: interview, error: fetchError } = await supabase
     .from("ai_course_interviews")
     .select("*")
     .eq("id", interviewId)
@@ -389,7 +400,7 @@ export async function generateCourseFromInterview(
   }
 
   // Update status to generating
-  await (supabase as any)
+  await supabase
     .from("ai_course_interviews")
     .update({ status: "generating" })
     .eq("id", interviewId);
@@ -404,9 +415,9 @@ export async function generateCourseFromInterview(
 
     if (interview.generation_mode === "document") {
       // Document-based generation
-      const docContents = (interview.uploaded_documents || [])
+      const docContents = ((interview.uploaded_documents as unknown as { name: string; content_text: string }[]) || [])
         .map(
-          (d: { name: string; content_text: string }) =>
+          (d) =>
             `--- Document: ${d.name} ---\n${d.content_text}`
         )
         .join("\n\n");
@@ -431,7 +442,7 @@ export async function generateCourseFromInterview(
           ? response.content[0].text
           : "";
 
-      await (supabase as any)
+      await supabase
         .from("ai_course_interviews")
         .update({
           total_input_tokens:
@@ -444,7 +455,7 @@ export async function generateCourseFromInterview(
         .eq("id", interviewId);
     } else {
       // Interview-based generation
-      const transcript = (interview.messages as ChatMessage[])
+      const transcript = (interview.messages as unknown as ChatMessage[])
         .map(
           (m) =>
             `${m.role === "assistant" ? "INTERVIEWER" : "EXPERT"}: ${m.content}`
@@ -470,7 +481,7 @@ export async function generateCourseFromInterview(
           ? response.content[0].text
           : "";
 
-      await (supabase as any)
+      await supabase
         .from("ai_course_interviews")
         .update({
           total_input_tokens:
@@ -487,10 +498,10 @@ export async function generateCourseFromInterview(
     const outline = parseGeneratedOutline(responseText);
 
     // Store outline and update status
-    await (supabase as any)
+    await supabase
       .from("ai_course_interviews")
       .update({
-        generated_outline: outline,
+        generated_outline: outline as unknown as Json,
         status: "review",
       })
       .eq("id", interviewId);
@@ -504,7 +515,7 @@ export async function generateCourseFromInterview(
     const errorMessage =
       err instanceof Error ? err.message : "Unknown error";
 
-    await (supabase as any)
+    await supabase
       .from("ai_course_interviews")
       .update({
         status: "failed",
@@ -532,7 +543,7 @@ export async function createCourseFromOutline(
   if (user.role !== "super_admin") return { courseId: null, error: "Unauthorized" };
 
   const supabase = await createServerClient();
-  const { data: interview, error: fetchError } = await (supabase as any)
+  const { data: interview, error: fetchError } = await supabase
     .from("ai_course_interviews")
     .select("*")
     .eq("id", interviewId)
@@ -544,7 +555,7 @@ export async function createCourseFromOutline(
   }
 
   const outline: GeneratedOutline =
-    editedOutline || (interview.generated_outline as GeneratedOutline);
+    editedOutline || (interview.generated_outline as unknown as GeneratedOutline);
 
   if (!outline) {
     return { courseId: null, error: "No generated outline found" };
@@ -560,7 +571,7 @@ export async function createCourseFromOutline(
       .replace(/^-|-$/g, "")
       .slice(0, 100);
 
-    const { data: course, error: courseError } = await (supabase as any)
+    const { data: course, error: courseError } = await supabase
       .from("courses")
       .insert({
         tenant_id: tenantId,
@@ -575,7 +586,7 @@ export async function createCourseFromOutline(
         instructor_id: user.user.id,
         learning_objectives: outline.learning_objectives || [],
         tags: interview.sector_key ? [interview.sector_key] : [],
-        settings: { ai_generated: true, interview_id: interviewId },
+        settings: { ai_generated: true, interview_id: interviewId } as unknown as Json,
       })
       .select("id")
       .single();
@@ -678,15 +689,14 @@ export async function createCourseFromOutline(
               correctAnswer = String(q.correct_answer || "");
             }
 
-            await (supabase as any)
+            await supabase
               .from("quiz_questions")
               .insert({
                 tenant_id: tenantId,
                 quiz_id: quiz.id,
                 question_type: q.question_type,
                 question_text: q.question_text,
-                options: q.options || null,
-                correct_answer: correctAnswer,
+                options: (q.options || null) as unknown as Json,
                 explanation: q.explanation || null,
                 points: 1,
                 sort_order: qi,
@@ -697,7 +707,7 @@ export async function createCourseFromOutline(
     }
 
     // Update interview with generated course link
-    await (supabase as any)
+    await supabase
       .from("ai_course_interviews")
       .update({
         generated_course_id: courseId,
@@ -762,7 +772,7 @@ export async function addDocumentToInterview(
   }
 
   const supabase = await createServerClient();
-  const { data: interview, error: fetchError } = await (supabase as any)
+  const { data: interview, error: fetchError } = await supabase
     .from("ai_course_interviews")
     .select("uploaded_documents")
     .eq("id", interviewId)
@@ -773,7 +783,7 @@ export async function addDocumentToInterview(
     return { success: false, error: "Interview not found" };
   }
 
-  const existingDocs = interview.uploaded_documents || [];
+  const existingDocs = (interview.uploaded_documents as unknown as AiCourseInterviewRow["uploaded_documents"]) || [];
   const updatedDocs = [
     ...existingDocs,
     {
@@ -785,9 +795,9 @@ export async function addDocumentToInterview(
     },
   ];
 
-  const { error: updateError } = await (supabase as any)
+  const { error: updateError } = await supabase
     .from("ai_course_interviews")
-    .update({ uploaded_documents: updatedDocs })
+    .update({ uploaded_documents: updatedDocs as unknown as Json })
     .eq("id", interviewId);
 
   if (updateError) {
@@ -815,7 +825,7 @@ export async function deleteAiInterview(
   if (user.role !== "super_admin") return { success: false, error: "Unauthorized" };
 
   const supabase = await createServerClient();
-  const { error } = await (supabase as any)
+  const { error } = await supabase
     .from("ai_course_interviews")
     .delete()
     .eq("id", interviewId)

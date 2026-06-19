@@ -118,7 +118,7 @@ export async function getStudentCourseEnrollments(
   studentId: string
 ): Promise<CourseEnrollmentRow[]> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("course_enrollments")
     .select("*")
     .eq("student_id", studentId)
@@ -135,7 +135,7 @@ export async function getCourseEnrollmentCount(
   courseId: string
 ): Promise<number> {
   const supabase = await createServerClient();
-  const { count, error } = await (supabase as any)
+  const { count, error } = await supabase
     .from("course_enrollments")
     .select("id", { count: "exact", head: true })
     .eq("course_id", courseId)
@@ -154,7 +154,7 @@ export async function getStudentLessonProgress(
   courseId: string
 ): Promise<LessonProgressRow[]> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("lesson_progress")
     .select("*")
     .eq("student_id", studentId)
@@ -175,7 +175,7 @@ export async function getQuizById(
   quizId: string
 ): Promise<QuizRow | null> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("quizzes")
     .select("*")
     .eq("id", quizId)
@@ -189,7 +189,7 @@ export async function getQuizQuestions(
   quizId: string
 ): Promise<QuizQuestionRow[]> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("quiz_questions")
     .select("*")
     .eq("quiz_id", quizId)
@@ -207,7 +207,7 @@ export async function getQuizAttempts(
   studentId: string
 ): Promise<QuizAttemptRow[]> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("quiz_attempts")
     .select("*")
     .eq("quiz_id", quizId)
@@ -225,7 +225,7 @@ export async function getCourseQuizzes(
   courseId: string
 ): Promise<QuizRow[]> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("quizzes")
     .select("*")
     .eq("course_id", courseId)
@@ -246,7 +246,7 @@ export async function getStudentCertificates(
   studentId: string
 ): Promise<CertificateRow[]> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("certificates")
     .select("*")
     .eq("student_id", studentId)
@@ -263,7 +263,7 @@ export async function getCertificateByVerificationCode(
   code: string
 ): Promise<CertificateRow | null> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("certificates")
     .select("*")
     .eq("verification_code", code)
@@ -290,7 +290,7 @@ export async function getCourseEnrollments(
   courseId: string
 ): Promise<CourseEnrollmentWithStudent[]> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("course_enrollments")
     .select("*, student:profiles!course_enrollments_student_id_fkey(id, first_name, last_name, email)")
     .eq("course_id", courseId)
@@ -310,7 +310,7 @@ export async function getAvailableStudents(): Promise<
   { id: string; first_name: string | null; last_name: string | null; email: string | null }[]
 > {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("profiles")
     .select("id, first_name, last_name, email")
     .in("role", ["student"])
@@ -339,9 +339,10 @@ export async function updateCourseEnrollmentStatus(
       updateData.completed_at = null;
     }
 
-    const { error } = await (supabase as any)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await supabase
       .from("course_enrollments")
-      .update(updateData)
+      .update(updateData as any)
       .eq("id", enrollmentId);
 
     if (error) {
@@ -373,7 +374,7 @@ export async function enrollStudentInCourse(
     const supabase = await createServerClient();
     const tenantId = getTenantId();
 
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("course_enrollments")
       .insert({
         tenant_id: tenantId,
@@ -412,7 +413,7 @@ export async function startLesson(
     const supabase = await createServerClient();
     const tenantId = getTenantId();
 
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("lesson_progress")
       .upsert(
         {
@@ -432,7 +433,7 @@ export async function startLesson(
     }
 
     // Update course enrollment last_accessed_at
-    await (supabase as any)
+    await supabase
       .from("course_enrollments")
       .update({ last_accessed_at: new Date().toISOString() })
       .eq("course_id", courseId)
@@ -457,7 +458,7 @@ export async function completeLesson(
     const tenantId = getTenantId();
 
     // Mark lesson complete
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("lesson_progress")
       .upsert(
         {
@@ -560,7 +561,7 @@ export async function startQuizAttempt(
     const quiz = await getQuizById(quizId);
     if (!quiz) return { success: false, error: "Quiz not found" };
 
-    const { data: existingAttempts } = await (supabase as any)
+    const { data: existingAttempts } = await supabase
       .from("quiz_attempts")
       .select("attempt_number")
       .eq("quiz_id", quizId)
@@ -577,7 +578,7 @@ export async function startQuizAttempt(
     }
 
     // Check for in-progress attempt
-    const { data: inProgress } = await (supabase as any)
+    const { data: inProgress } = await supabase
       .from("quiz_attempts")
       .select("id")
       .eq("quiz_id", quizId)
@@ -589,7 +590,7 @@ export async function startQuizAttempt(
       return { success: true, attemptId: inProgress[0].id };
     }
 
-    const { data: attempt, error } = await (supabase as any)
+    const { data: attempt, error } = await supabase
       .from("quiz_attempts")
       .insert({
         tenant_id: tenantId,
@@ -623,7 +624,7 @@ export async function submitQuizAttempt(
     const supabase = await createServerClient();
 
     // Get the attempt
-    const { data: attempt } = await (supabase as any)
+    const { data: attempt } = await supabase
       .from("quiz_attempts")
       .select("*, quizzes(*)")
       .eq("id", attemptId)
@@ -674,7 +675,7 @@ export async function submitQuizAttempt(
         : 0;
     const passed = scorePct >= (attempt.quizzes?.passing_score || 70);
 
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("quiz_attempts")
       .update({
         answers,
@@ -727,7 +728,7 @@ export async function createQuiz(
     const supabase = await createServerClient();
     const tenantId = getTenantId();
 
-    const { data: quiz, error } = await (supabase as any)
+    const { data: quiz, error } = await supabase
       .from("quizzes")
       .insert({
         tenant_id: tenantId,
@@ -793,9 +794,10 @@ export async function updateQuiz(
       updateData.show_answers_after = data.show_answers_after;
     if (data.is_published !== undefined) updateData.is_published = data.is_published;
 
-    const { error } = await (supabase as any)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await supabase
       .from("quizzes")
-      .update(updateData)
+      .update(updateData as any)
       .eq("id", quizId);
 
     if (error) {
@@ -832,16 +834,16 @@ export async function createQuizQuestion(
     const tenantId = getTenantId();
 
     // Get next sort order
-    const { data: existing } = await (supabase as any)
+    const { data: existing } = await supabase
       .from("quiz_questions")
       .select("sort_order")
       .eq("quiz_id", quizId)
       .order("sort_order", { ascending: false })
       .limit(1);
 
-    const nextOrder = existing?.[0] ? existing[0].sort_order + 1 : 0;
+    const nextOrder = existing?.[0] ? (existing[0].sort_order ?? 0) + 1 : 0;
 
-    const { data: question, error } = await (supabase as any)
+    const { data: question, error } = await supabase
       .from("quiz_questions")
       .insert({
         tenant_id: tenantId,
@@ -894,9 +896,10 @@ export async function updateQuizQuestion(
     if (data.options !== undefined) updateData.options = data.options;
     if (data.points !== undefined) updateData.points = data.points;
 
-    const { error } = await (supabase as any)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await supabase
       .from("quiz_questions")
-      .update(updateData)
+      .update(updateData as any)
       .eq("id", questionId);
 
     if (error) {
@@ -923,7 +926,7 @@ export async function deleteQuizQuestion(
       return { success: false, error: "Insufficient permissions" };
 
     const supabase = await createServerClient();
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("quiz_questions")
       .delete()
       .eq("id", questionId);
@@ -959,26 +962,26 @@ export async function issueCertificate(
     const tenantId = getTenantId();
 
     // Generate certificate number
-    const { data: certNum } = await (supabase as any).rpc(
+    const { data: certNum } = await supabase.rpc(
       "generate_certificate_number"
     );
 
     const verificationCode = crypto.randomUUID().replace(/-/g, "").substring(0, 12).toUpperCase();
 
     // Get student and course info for template data
-    const { data: student } = await (supabase as any)
+    const { data: student } = await supabase
       .from("profiles")
       .select("first_name, last_name")
       .eq("id", studentId)
       .single();
 
-    const { data: course } = await (supabase as any)
+    const { data: course } = await supabase
       .from("courses")
       .select("title")
       .eq("id", courseId)
       .single();
 
-    const { data: cert, error } = await (supabase as any)
+    const { data: cert, error } = await supabase
       .from("certificates")
       .insert({
         tenant_id: tenantId,
@@ -1006,7 +1009,7 @@ export async function issueCertificate(
     }
 
     // Link certificate to course enrollment
-    await (supabase as any)
+    await supabase
       .from("course_enrollments")
       .update({ certificate_id: cert.id })
       .eq("course_id", courseId)

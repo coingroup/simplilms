@@ -70,7 +70,7 @@ export interface LessonRow {
 
 export async function getCourses(): Promise<CourseRow[]> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("courses")
     .select("*")
     .order("sort_order", { ascending: true })
@@ -85,7 +85,7 @@ export async function getCourses(): Promise<CourseRow[]> {
 
 export async function getPublishedCourses(): Promise<CourseRow[]> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("courses")
     .select("*")
     .eq("is_published", true)
@@ -103,7 +103,7 @@ export async function getCourseById(
   id: string
 ): Promise<CourseRow | null> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("courses")
     .select("*")
     .eq("id", id)
@@ -120,7 +120,7 @@ export async function getCourseBySlug(
   slug: string
 ): Promise<CourseRow | null> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("courses")
     .select("*")
     .eq("slug", slug)
@@ -134,7 +134,7 @@ export async function getModulesByCourse(
   courseId: string
 ): Promise<ModuleRow[]> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("modules")
     .select("*")
     .eq("course_id", courseId)
@@ -151,7 +151,7 @@ export async function getLessonsByModule(
   moduleId: string
 ): Promise<LessonRow[]> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("lessons")
     .select("*")
     .eq("module_id", moduleId)
@@ -168,7 +168,7 @@ export async function getLessonById(
   lessonId: string
 ): Promise<LessonRow | null> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("lessons")
     .select("*")
     .eq("id", lessonId)
@@ -228,7 +228,7 @@ export async function createCourse(
 
   // Generate unique slug
   let slug = generateSlug(title);
-  const { data: existing } = await (supabase as any)
+  const { data: existing } = await supabase
     .from("courses")
     .select("id")
     .eq("tenant_id", tenantId)
@@ -267,9 +267,10 @@ export async function createCourse(
       .filter(Boolean);
   }
 
-  const { data, error } = await (supabase as any)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await supabase
     .from("courses")
-    .insert(insertData)
+    .insert(insertData as any)
     .select("id")
     .single();
 
@@ -325,9 +326,10 @@ export async function updateCourse(
         .filter(Boolean);
     }
 
-    const { error } = await (supabase as any)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await supabase
       .from("courses")
-      .update(updateData)
+      .update(updateData as any)
       .eq("id", courseId);
 
     if (error) {
@@ -359,7 +361,7 @@ export async function toggleCoursePublished(
     const supabase = await createServerClient();
     const newPublished = !course.is_published;
 
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("courses")
       .update({
         is_published: newPublished,
@@ -399,16 +401,16 @@ export async function createModule(
     const tenantId = getTenantId();
 
     // Get the next sort order
-    const { data: existing } = await (supabase as any)
+    const { data: existing } = await supabase
       .from("modules")
       .select("sort_order")
       .eq("course_id", courseId)
       .order("sort_order", { ascending: false })
       .limit(1);
 
-    const nextOrder = existing?.[0] ? existing[0].sort_order + 1 : 0;
+    const nextOrder = existing?.[0] ? (existing[0].sort_order ?? 0) + 1 : 0;
 
-    const { data: mod, error } = await (supabase as any)
+    const { data: mod, error } = await supabase
       .from("modules")
       .insert({
         tenant_id: tenantId,
@@ -449,9 +451,10 @@ export async function updateModule(
     if (data.description !== undefined)
       updateData.description = data.description.trim() || null;
 
-    const { error } = await (supabase as any)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await supabase
       .from("modules")
-      .update(updateData)
+      .update(updateData as any)
       .eq("id", moduleId);
 
     if (error) {
@@ -478,7 +481,7 @@ export async function deleteModule(
       return { success: false, error: "Insufficient permissions" };
 
     const supabase = await createServerClient();
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("modules")
       .delete()
       .eq("id", moduleId);
@@ -518,16 +521,16 @@ export async function createLesson(
     const supabase = await createServerClient();
     const tenantId = getTenantId();
 
-    const { data: existing } = await (supabase as any)
+    const { data: existing } = await supabase
       .from("lessons")
       .select("sort_order")
       .eq("module_id", moduleId)
       .order("sort_order", { ascending: false })
       .limit(1);
 
-    const nextOrder = existing?.[0] ? existing[0].sort_order + 1 : 0;
+    const nextOrder = existing?.[0] ? (existing[0].sort_order ?? 0) + 1 : 0;
 
-    const { data: lesson, error } = await (supabase as any)
+    const { data: lesson, error } = await supabase
       .from("lessons")
       .insert({
         tenant_id: tenantId,
@@ -584,9 +587,10 @@ export async function updateLesson(
       updateData.duration_minutes = data.duration_minutes;
     if (data.is_required !== undefined) updateData.is_required = data.is_required;
 
-    const { error } = await (supabase as any)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await supabase
       .from("lessons")
-      .update(updateData)
+      .update(updateData as any)
       .eq("id", lessonId);
 
     if (error) {
@@ -613,7 +617,7 @@ export async function deleteLesson(
       return { success: false, error: "Insufficient permissions" };
 
     const supabase = await createServerClient();
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("lessons")
       .delete()
       .eq("id", lessonId);

@@ -101,43 +101,43 @@ export async function getAnalyticsOverview(): Promise<OverviewStats> {
     lessonProgressRes,
   ] = await Promise.all([
     // Total students
-    (supabase as any)
+    supabase
       .from("profiles")
       .select("id", { count: "exact", head: true })
       .eq("role", "student"),
     // Total published courses
-    (supabase as any)
+    supabase
       .from("courses")
       .select("id", { count: "exact", head: true })
       .eq("is_published", true),
     // Active course enrollments
-    (supabase as any)
+    supabase
       .from("course_enrollments")
       .select("id", { count: "exact", head: true })
       .eq("status", "active"),
     // Completed enrollments
-    (supabase as any)
+    supabase
       .from("course_enrollments")
       .select("id", { count: "exact", head: true })
       .eq("status", "completed"),
     // Total revenue
-    (supabase as any)
+    supabase
       .from("payments")
       .select("amount_cents")
       .eq("status", "succeeded"),
     // Avg progress
-    (supabase as any)
+    supabase
       .from("course_enrollments")
       .select("progress_pct")
       .in("status", ["active", "completed"]),
     // Avg quiz score
-    (supabase as any)
+    supabase
       .from("quiz_attempts")
       .select("score_pct")
       .eq("status", "graded")
       .not("score_pct", "is", null),
     // Lessons completed
-    (supabase as any)
+    supabase
       .from("lesson_progress")
       .select("id", { count: "exact", head: true })
       .eq("status", "completed"),
@@ -154,7 +154,7 @@ export async function getAnalyticsOverview(): Promise<OverviewStats> {
     progressData.length > 0
       ? Math.round(
           progressData.reduce(
-            (sum: number, e: { progress_pct: number }) =>
+            (sum: number, e: { progress_pct: number | null }) =>
               sum + (e.progress_pct || 0),
             0
           ) / progressData.length
@@ -197,7 +197,7 @@ export async function getEnrollmentTrends(
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
 
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("course_enrollments")
     .select("enrolled_at")
     .gte("enrolled_at", startDate.toISOString())
@@ -239,7 +239,7 @@ export async function getCoursePerformance(): Promise<CoursePerformanceRow[]> {
   const supabase = await createServerClient();
 
   // Get all courses
-  const { data: courses, error: courseError } = await (supabase as any)
+  const { data: courses, error: courseError } = await supabase
     .from("courses")
     .select("id, title, is_published")
     .order("title");
@@ -247,17 +247,17 @@ export async function getCoursePerformance(): Promise<CoursePerformanceRow[]> {
   if (courseError || !courses || courses.length === 0) return [];
 
   // Get all course enrollments
-  const { data: enrollments } = await (supabase as any)
+  const { data: enrollments } = await supabase
     .from("course_enrollments")
     .select("course_id, status, progress_pct")
     .in("status", ["active", "completed"]);
 
   // Get quiz attempts grouped by course
-  const { data: quizzes } = await (supabase as any)
+  const { data: quizzes } = await supabase
     .from("quizzes")
     .select("id, course_id");
 
-  const { data: attempts } = await (supabase as any)
+  const { data: attempts } = await supabase
     .from("quiz_attempts")
     .select("quiz_id, score_pct")
     .eq("status", "graded")
@@ -290,7 +290,7 @@ export async function getCoursePerformance(): Promise<CoursePerformanceRow[]> {
   });
 
   (enrollments || []).forEach(
-    (e: { course_id: string; status: string; progress_pct: number }) => {
+    (e: { course_id: string; status: string | null; progress_pct: number | null }) => {
       const m = courseMetrics[e.course_id];
       if (!m) return;
       m.enrollmentCount++;
@@ -346,7 +346,7 @@ export async function getQuizPerformance(): Promise<QuizPerformanceRow[]> {
   const supabase = await createServerClient();
 
   // Get all quizzes with course info
-  const { data: quizzes, error } = await (supabase as any)
+  const { data: quizzes, error } = await supabase
     .from("quizzes")
     .select("id, title, course_id")
     .eq("is_published", true);
@@ -355,7 +355,7 @@ export async function getQuizPerformance(): Promise<QuizPerformanceRow[]> {
 
   // Get courses for titles
   const courseIds = [...new Set(quizzes.map((q: { course_id: string }) => q.course_id))] as string[];
-  const { data: courses } = await (supabase as any)
+  const { data: courses } = await supabase
     .from("courses")
     .select("id, title")
     .in("id", courseIds);
@@ -366,7 +366,7 @@ export async function getQuizPerformance(): Promise<QuizPerformanceRow[]> {
   });
 
   // Get all graded attempts
-  const { data: attempts } = await (supabase as any)
+  const { data: attempts } = await supabase
     .from("quiz_attempts")
     .select("quiz_id, score_pct, passed, time_spent_seconds")
     .eq("status", "graded");
@@ -447,7 +447,7 @@ export async function getAtRiskStudents(): Promise<AtRiskStudent[]> {
   const supabase = await createServerClient();
 
   // Get all students with active enrollments
-  const { data: enrollments, error } = await (supabase as any)
+  const { data: enrollments, error } = await supabase
     .from("course_enrollments")
     .select("student_id, course_id, progress_pct, last_accessed_at, enrolled_at, status")
     .eq("status", "active");
@@ -496,7 +496,7 @@ export async function getAtRiskStudents(): Promise<AtRiskStudent[]> {
 
   // Get student profiles
   const studentIds = Object.keys(studentEnrollments);
-  const { data: profiles } = await (supabase as any)
+  const { data: profiles } = await supabase
     .from("profiles")
     .select("id, first_name, last_name, email")
     .in("id", studentIds);
@@ -596,7 +596,7 @@ export async function getRevenueByMonth(
   const startDate = new Date();
   startDate.setMonth(startDate.getMonth() - months);
 
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("payments")
     .select("amount_cents, paid_at")
     .eq("status", "succeeded")
@@ -638,7 +638,7 @@ export async function getStudentActivity(): Promise<StudentActivityRow[]> {
   const supabase = await createServerClient();
 
   // Get all students
-  const { data: students, error } = await (supabase as any)
+  const { data: students, error } = await supabase
     .from("profiles")
     .select("id, first_name, last_name, email")
     .eq("role", "student")
@@ -647,13 +647,13 @@ export async function getStudentActivity(): Promise<StudentActivityRow[]> {
   if (error || !students || students.length === 0) return [];
 
   // Get all course enrollments
-  const { data: enrollments } = await (supabase as any)
+  const { data: enrollments } = await supabase
     .from("course_enrollments")
     .select("student_id, status, progress_pct, last_accessed_at")
     .in("status", ["active", "completed"]);
 
   // Get lesson progress for time spent
-  const { data: lessonProgress } = await (supabase as any)
+  const { data: lessonProgress } = await supabase
     .from("lesson_progress")
     .select("student_id, status, time_spent_seconds");
 
@@ -673,8 +673,8 @@ export async function getStudentActivity(): Promise<StudentActivityRow[]> {
   (enrollments || []).forEach(
     (e: {
       student_id: string;
-      status: string;
-      progress_pct: number;
+      status: string | null;
+      progress_pct: number | null;
       last_accessed_at: string | null;
     }) => {
       if (!studentMetrics[e.student_id]) {
@@ -703,8 +703,8 @@ export async function getStudentActivity(): Promise<StudentActivityRow[]> {
   (lessonProgress || []).forEach(
     (lp: {
       student_id: string;
-      status: string;
-      time_spent_seconds: number;
+      status: string | null;
+      time_spent_seconds: number | null;
     }) => {
       const m = studentMetrics[lp.student_id];
       if (!m) return;
@@ -790,7 +790,7 @@ export async function getCourseAnalytics(
   const supabase = await createServerClient();
 
   // Get course
-  const { data: course, error: courseError } = await (supabase as any)
+  const { data: course, error: courseError } = await supabase
     .from("courses")
     .select("id, title")
     .eq("id", courseId)
@@ -807,30 +807,30 @@ export async function getCourseAnalytics(
     quizzesRes,
     quizAttemptsRes,
   ] = await Promise.all([
-    (supabase as any)
+    supabase
       .from("course_enrollments")
       .select("student_id, status, progress_pct, enrolled_at, last_accessed_at")
       .eq("course_id", courseId)
       .in("status", ["active", "completed"]),
-    (supabase as any)
+    supabase
       .from("modules")
       .select("id, title, sort_order")
       .eq("course_id", courseId)
       .order("sort_order"),
-    (supabase as any)
+    supabase
       .from("lessons")
       .select("id, module_id")
       .eq("is_published", true),
-    (supabase as any)
+    supabase
       .from("lesson_progress")
       .select("student_id, lesson_id, status, time_spent_seconds")
       .eq("course_id", courseId),
-    (supabase as any)
+    supabase
       .from("quizzes")
       .select("id, title")
       .eq("course_id", courseId)
       .eq("is_published", true),
-    (supabase as any)
+    supabase
       .from("quiz_attempts")
       .select("quiz_id, student_id, score_pct, passed, status"),
   ]);
@@ -845,13 +845,13 @@ export async function getCourseAnalytics(
   // Course-level stats
   const enrollmentCount = enrollments.length;
   const completedCount = enrollments.filter(
-    (e: { status: string }) => e.status === "completed"
+    (e: { status: string | null }) => e.status === "completed"
   ).length;
   const avgProgress =
     enrollmentCount > 0
       ? Math.round(
           enrollments.reduce(
-            (sum: number, e: { progress_pct: number }) =>
+            (sum: number, e: { progress_pct: number | null }) =>
               sum + (e.progress_pct || 0),
             0
           ) / enrollmentCount
@@ -871,7 +871,8 @@ export async function getCourseAnalytics(
     trendMap[key] = 0;
   }
 
-  enrollments.forEach((e: { enrolled_at: string }) => {
+  enrollments.forEach((e: { enrolled_at: string | null }) => {
+    if (!e.enrolled_at) return;
     const date = e.enrolled_at.split("T")[0];
     if (trendMap[date] !== undefined) trendMap[date]++;
   });
@@ -892,7 +893,7 @@ export async function getCourseAnalytics(
 
   const completedLessons = new Set(
     lessonProgress
-      .filter((lp: { status: string }) => lp.status === "completed")
+      .filter((lp: { status: string | null }) => lp.status === "completed")
       .map((lp: { lesson_id: string }) => lp.lesson_id)
   );
 
@@ -918,7 +919,7 @@ export async function getCourseAnalytics(
   const courseQuizIds = quizzes.map((q: { id: string }) => q.id);
   const quizResults = quizzes.map((q: { id: string; title: string }) => {
     const qAttempts = quizAttempts.filter(
-      (a: { quiz_id: string; status: string }) =>
+      (a: { quiz_id: string; status: string | null }) =>
         a.quiz_id === q.id && a.status === "graded"
     );
     const scores = qAttempts
@@ -951,7 +952,7 @@ export async function getCourseAnalytics(
   > = {};
 
   if (studentIds.length > 0) {
-    const { data: profiles } = await (supabase as any)
+    const { data: profiles } = await supabase
       .from("profiles")
       .select("id, first_name, last_name")
       .in("id", studentIds);
@@ -965,7 +966,7 @@ export async function getCourseAnalytics(
 
   // Student lesson counts + quiz scores
   const studentLessons: Record<string, number> = {};
-  lessonProgress.forEach((lp: { student_id: string; status: string }) => {
+  lessonProgress.forEach((lp: { student_id: string; status: string | null }) => {
     if (lp.status === "completed") {
       studentLessons[lp.student_id] = (studentLessons[lp.student_id] || 0) + 1;
     }
@@ -974,7 +975,7 @@ export async function getCourseAnalytics(
   const studentQuizScores: Record<string, number[]> = {};
   quizAttempts
     .filter(
-      (a: { quiz_id: string; status: string }) =>
+      (a: { quiz_id: string; status: string | null }) =>
         courseQuizIds.includes(a.quiz_id) && a.status === "graded"
     )
     .forEach((a: { student_id: string; score_pct: number | null }) => {
@@ -987,7 +988,7 @@ export async function getCourseAnalytics(
 
   const topStudents = enrollments
     .map(
-      (e: { student_id: string; progress_pct: number }) => {
+      (e: { student_id: string; progress_pct: number | null }) => {
         const profile = profileMap[e.student_id] || {};
         const scores = studentQuizScores[e.student_id] || [];
         return {

@@ -65,7 +65,7 @@ export interface SectorQuestionBankRow {
  */
 export async function getSectorModules(): Promise<SectorModuleRow[]> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("sector_modules")
     .select("*")
     .eq("is_active", true)
@@ -76,7 +76,7 @@ export async function getSectorModules(): Promise<SectorModuleRow[]> {
     return [];
   }
 
-  return data || [];
+  return (data || []) as unknown as SectorModuleRow[];
 }
 
 /**
@@ -86,14 +86,14 @@ export async function getSectorModuleByKey(
   sectorKey: string
 ): Promise<SectorModuleRow | null> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("sector_modules")
     .select("*")
     .eq("sector_key", sectorKey)
     .single();
 
   if (error) return null;
-  return data;
+  return data as unknown as SectorModuleRow;
 }
 
 /**
@@ -103,7 +103,7 @@ export async function getTenantSectorSubscriptions(): Promise<
   TenantSectorSubscriptionRow[]
 > {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("tenant_sector_subscriptions")
     .select("*, sector_module:sector_modules(*)")
     .eq("tenant_id", getTenantId())
@@ -128,7 +128,7 @@ export async function getAllTenantSectorSubscriptions(): Promise<
   TenantSectorSubscriptionRow[]
 > {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("tenant_sector_subscriptions")
     .select("*, sector_module:sector_modules(*)")
     .eq("tenant_id", getTenantId())
@@ -164,7 +164,7 @@ export async function activateSectorModule(sectorModuleId: string): Promise<{
   const tenantId = getTenantId();
 
   // Check if already subscribed
-  const { data: existing } = await (supabase as any)
+  const { data: existing } = await supabase
     .from("tenant_sector_subscriptions")
     .select("id, status")
     .eq("tenant_id", tenantId)
@@ -177,7 +177,7 @@ export async function activateSectorModule(sectorModuleId: string): Promise<{
 
   if (existing) {
     // Reactivate
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("tenant_sector_subscriptions")
       .update({ status: "active", subscribed_at: new Date().toISOString() })
       .eq("id", existing.id);
@@ -185,7 +185,7 @@ export async function activateSectorModule(sectorModuleId: string): Promise<{
     if (error) return { error: error.message };
   } else {
     // Create new
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("tenant_sector_subscriptions")
       .insert({
         tenant_id: tenantId,
@@ -210,7 +210,7 @@ export async function deactivateSectorModule(
   if (user.role !== "super_admin") return { error: "Unauthorized" };
 
   const supabase = await createServerClient();
-  const { error } = await (supabase as any)
+  const { error } = await supabase
     .from("tenant_sector_subscriptions")
     .update({ status: "cancelled" })
     .eq("tenant_id", getTenantId())
@@ -242,7 +242,7 @@ export async function getSectorQuestions(params: {
   const limit = params.limit || 25;
   const offset = params.offset || 0;
 
-  let query = (supabase as any)
+  let query = supabase
     .from("sector_question_banks")
     .select("*", { count: "exact" })
     .eq("sector_module_id", params.sectorModuleId)
@@ -270,7 +270,7 @@ export async function getSectorQuestions(params: {
     return { questions: [], total: 0 };
   }
 
-  return { questions: data || [], total: count || 0 };
+  return { questions: (data || []) as unknown as SectorQuestionBankRow[], total: count || 0 };
 }
 
 /**
@@ -280,7 +280,7 @@ export async function getSectorQuestionTopics(
   sectorModuleId: string
 ): Promise<string[]> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("sector_question_banks")
     .select("topic")
     .eq("sector_module_id", sectorModuleId)
@@ -314,7 +314,7 @@ export async function importQuestionsToQuiz(params: {
   const tenantId = getTenantId();
 
   // Fetch source questions
-  const { data: sourceQuestions, error: fetchError } = await (supabase as any)
+  const { data: sourceQuestions, error: fetchError } = await supabase
     .from("sector_question_banks")
     .select("*")
     .in("id", params.questionIds);
@@ -324,7 +324,7 @@ export async function importQuestionsToQuiz(params: {
   }
 
   // Get existing count for sort_order
-  const { count } = await (supabase as any)
+  const { count } = await supabase
     .from("quiz_questions")
     .select("id", { count: "exact" })
     .eq("quiz_id", params.quizId);
@@ -343,7 +343,7 @@ export async function importQuestionsToQuiz(params: {
     sort_order: startOrder + i,
   }));
 
-  const { error: insertError } = await (supabase as any)
+  const { error: insertError } = await supabase
     .from("quiz_questions")
     .insert(quizQuestions);
 
@@ -357,7 +357,7 @@ export async function importQuestionsToQuiz(params: {
  */
 export async function getActiveSectorKeys(): Promise<string[]> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("tenant_sector_subscriptions")
     .select("sector_module:sector_modules(sector_key)")
     .eq("tenant_id", getTenantId())

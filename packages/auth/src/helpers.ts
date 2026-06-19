@@ -57,7 +57,7 @@ export async function getUser(): Promise<GetUserResult> {
   // Note: Using `as any` because the Database generic type doesn't flow
   // properly through @supabase/ssr's createServerClient wrapper
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data } = await (supabase as any)
+  const { data } = await supabase
     .from("profiles")
     .select("id, first_name, last_name, email, phone, avatar_url, role, tenant_id")
     .eq("id", user.id)

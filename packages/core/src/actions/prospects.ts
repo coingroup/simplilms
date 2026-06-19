@@ -22,7 +22,7 @@ export async function updateEligibility(
     const supabase = await createServerClient();
 
     // Update prospect eligibility
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("prospects")
       .update({
         eligibility_status: status,
@@ -37,7 +37,7 @@ export async function updateEligibility(
     }
 
     // Log to audit trail
-    await (supabase as any).from("audit_log").insert({
+    await supabase.from("audit_log").insert({
       tenant_id: user.tenantId,
       actor_id: user.user.id,
       action: "update_eligibility",
@@ -75,7 +75,7 @@ export async function addProspectNote(
     const supabase = await createServerClient();
 
     // Fetch current notes
-    const { data: prospect, error: fetchError } = await (supabase as any)
+    const { data: prospect, error: fetchError } = await supabase
       .from("prospects")
       .select("notes")
       .eq("id", prospectId)
@@ -103,7 +103,7 @@ export async function addProspectNote(
       ? `${existingNotes}\n\n${formattedNote}`
       : formattedNote;
 
-    const { error: updateError } = await (supabase as any)
+    const { error: updateError } = await supabase
       .from("prospects")
       .update({ notes: updatedNotes })
       .eq("id", prospectId);

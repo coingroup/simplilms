@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
 
   // Fetch interview
   const supabase = await createServerClient();
-  const { data: interview, error: fetchError } = await (supabase as any)
+  const { data: interview, error: fetchError } = await supabase
     .from("ai_course_interviews")
     .select("*")
     .eq("id", interviewId)
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
   // Build messages
   const now = new Date().toISOString();
   const updatedMessages: ChatMessage[] = [
-    ...(interview.messages as ChatMessage[]),
+    ...(interview.messages as unknown as ChatMessage[]),
     { role: "user" as const, content: userMessage, timestamp: now },
   ];
 
@@ -165,10 +165,10 @@ export async function POST(request: NextRequest) {
           timestamp: new Date().toISOString(),
         });
 
-        await (supabase as any)
+        await supabase
           .from("ai_course_interviews")
           .update({
-            messages: updatedMessages,
+            messages: updatedMessages as unknown as import("@simplilms/database").Json,
             total_input_tokens:
               (interview.total_input_tokens || 0) +
               finalMessage.usage.input_tokens,

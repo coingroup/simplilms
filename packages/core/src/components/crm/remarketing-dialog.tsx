@@ -49,7 +49,7 @@ export function RemarketingDialog({
 
   const fetchTemplates = async () => {
     const supabase = createBrowserClient();
-    const { data } = await (supabase as any)
+    const { data } = await supabase
       .from("communication_templates")
       .select("*")
       .eq("channel", channel)

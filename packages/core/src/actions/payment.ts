@@ -220,7 +220,7 @@ export async function createInstallmentCheckout(
     const tenantId = getTenantId();
 
     // Fetch the pending payment
-    const { data: payment, error: paymentError } = await (supabase as any)
+    const { data: payment, error: paymentError } = await supabase
       .from("payments")
       .select("*")
       .eq("id", paymentId)
@@ -267,7 +267,7 @@ export async function createInstallmentCheckout(
     );
 
     // Update the pending payment with the checkout session ID
-    await (supabase as any)
+    await supabase
       .from("payments")
       .update({ stripe_checkout_session_id: session.id })
       .eq("id", paymentId);

@@ -116,7 +116,7 @@ export async function getProspects(params: {
   const supabase = await createServerClient();
   const { status, search, sort = "newest", page = 1, pageSize = 20 } = params;
 
-  let query = (supabase as any)
+  let query = supabase
     .from("prospects")
     .select("*", { count: "exact" });
 
@@ -155,7 +155,7 @@ export async function getProspectById(
   id: string
 ): Promise<ProspectRow | null> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("prospects")
     .select("*")
     .eq("id", id)
@@ -182,7 +182,7 @@ export async function getApplications(params: {
   const supabase = await createServerClient();
   const { status, search, page = 1, pageSize = 20 } = params;
 
-  let query = (supabase as any)
+  let query = supabase
     .from("applications")
     .select("*", { count: "exact" });
 
@@ -219,7 +219,7 @@ export async function getApplicationById(
   id: string
 ): Promise<ApplicationRow | null> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("applications")
     .select("*")
     .eq("id", id)
@@ -242,7 +242,7 @@ export async function getCommunicationTemplates(
 ): Promise<CommunicationTemplateRow[]> {
   const supabase = await createServerClient();
 
-  let query = (supabase as any)
+  let query = supabase
     .from("communication_templates")
     .select("*")
     .order("name");
@@ -266,7 +266,7 @@ export async function getCommunicationLog(
 ): Promise<CommunicationLogRow[]> {
   const supabase = await createServerClient();
 
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("communication_log")
     .select("*")
     .eq("recipient_id", recipientId)
@@ -299,7 +299,7 @@ export interface ProgramRow {
 
 export async function getPrograms(): Promise<ProgramRow[]> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("programs")
     .select("*")
     .eq("is_active", true)
@@ -326,7 +326,7 @@ export async function getProspectByIdPublic(
   id: string
 ): Promise<ProspectRow | null> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("prospects")
     .select(
       "id, tenant_id, first_name, last_name, email, phone, program_interest, eligibility_status"
@@ -351,7 +351,7 @@ export async function getApplicationByProspectId(
   prospectId: string
 ): Promise<ApplicationRow | null> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("applications")
     .select("*")
     .eq("prospect_id", prospectId)
@@ -381,18 +381,18 @@ export async function getDashboardStats(): Promise<{
 
   const [prospectsRes, applicationsRes, enrollmentsRes, paymentsRes] =
     await Promise.all([
-      (supabase as any)
+      supabase
         .from("prospects")
         .select("id", { count: "exact", head: true }),
-      (supabase as any)
+      supabase
         .from("applications")
         .select("id", { count: "exact", head: true })
         .eq("status", "submitted"),
-      (supabase as any)
+      supabase
         .from("enrollments")
         .select("id", { count: "exact", head: true })
         .in("status", ["active", "payment_plan_active"]),
-      (supabase as any)
+      supabase
         .from("payments")
         .select("amount_cents")
         .eq("status", "succeeded"),
@@ -423,15 +423,15 @@ export async function getRepDashboardStats(): Promise<{
   ).toISOString();
 
   const [prospectsRes, pendingCallsRes, recentRes] = await Promise.all([
-    (supabase as any)
+    supabase
       .from("prospects")
       .select("id", { count: "exact", head: true }),
-    (supabase as any)
+    supabase
       .from("prospects")
       .select("id", { count: "exact", head: true })
       .not("discovery_call_date", "is", null)
       .eq("eligibility_status", "pending"),
-    (supabase as any)
+    supabase
       .from("prospects")
       .select("id", { count: "exact", head: true })
       .gte("inquiry_submitted_at", sevenDaysAgo),
@@ -546,7 +546,7 @@ export async function getPaymentsByUserId(
   userId: string
 ): Promise<PaymentRow[]> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("payments")
     .select("*")
     .eq("user_id", userId)
@@ -571,7 +571,7 @@ export async function getEnrollmentsByUserId(
   userId: string
 ): Promise<EnrollmentRow[]> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("enrollments")
     .select("*")
     .eq("user_id", userId)
@@ -597,7 +597,7 @@ export async function getEnrollments(params: {
   const supabase = await createServerClient();
   const { status, search, page = 1, pageSize = 20 } = params;
 
-  let query = (supabase as any)
+  let query = supabase
     .from("enrollments")
     .select("*", { count: "exact" });
 
@@ -656,7 +656,7 @@ export async function getMessagesByUserId(
   userId: string
 ): Promise<MessageRow[]> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("messages")
     .select("*")
     .eq("recipient_id", userId)
@@ -677,7 +677,7 @@ export async function getUnreadMessageCount(
   userId: string
 ): Promise<number> {
   const supabase = await createServerClient();
-  const { count, error } = await (supabase as any)
+  const { count, error } = await supabase
     .from("messages")
     .select("id", { count: "exact", head: true })
     .eq("recipient_id", userId)
@@ -698,7 +698,7 @@ export async function getMessageById(
   messageId: string
 ): Promise<MessageRow | null> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("messages")
     .select("*")
     .eq("id", messageId)
@@ -725,7 +725,7 @@ export async function getSentMessages(params: {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  const { data, error, count } = await (supabase as any)
+  const { data, error, count } = await supabase
     .from("messages")
     .select("*", { count: "exact" })
     .order("created_at", { ascending: false })
@@ -782,7 +782,7 @@ export async function getStudentClasses(
   const supabase = await createServerClient();
 
   // First get class enrollments
-  const { data: enrollments, error: enrollError } = await (supabase as any)
+  const { data: enrollments, error: enrollError } = await supabase
     .from("class_enrollments")
     .select("*")
     .eq("student_id", userId)
@@ -795,7 +795,7 @@ export async function getStudentClasses(
 
   // Get class IDs and fetch class + instructor details
   const classIds = enrollments.map((e: { class_id: string }) => e.class_id);
-  const { data: classes, error: classError } = await (supabase as any)
+  const { data: classes, error: classError } = await supabase
     .from("classes")
     .select("*")
     .in("id", classIds);
@@ -816,7 +816,7 @@ export async function getStudentClasses(
 
   let instructorMap: Record<string, { first_name: string | null; last_name: string | null }> = {};
   if (instructorIds.length > 0) {
-    const { data: instructors } = await (supabase as any)
+    const { data: instructors } = await supabase
       .from("profiles")
       .select("id, first_name, last_name")
       .in("id", instructorIds);
@@ -837,7 +837,7 @@ export async function getStudentClasses(
   );
 
   return enrollments.map(
-    (enrollment: { id: string; class_id: string; student_id: string; status: string; enrolled_at: string }) => {
+    (enrollment: { id: string; class_id: string; student_id: string; status: string | null; enrolled_at: string | null }) => {
       const cls = classMap[enrollment.class_id] || {};
       const instructor = instructorMap[cls.instructor_id as string] || {};
       return {
@@ -866,7 +866,7 @@ export async function getAttendanceByStudent(
   userId: string
 ): Promise<AttendanceRow[]> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("attendance")
     .select("id, class_id, student_id, session_date, status, marked_at")
     .eq("student_id", userId)
@@ -887,7 +887,7 @@ export async function getStudentProfiles(): Promise<
   { id: string; first_name: string | null; last_name: string | null; email: string | null }[]
 > {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("profiles")
     .select("id, first_name, last_name, email")
     .eq("role", "student")
@@ -945,7 +945,7 @@ export async function getInstructorClasses(
   const supabase = await createServerClient();
 
   // Get classes assigned to this instructor
-  const { data: classes, error } = await (supabase as any)
+  const { data: classes, error } = await supabase
     .from("classes")
     .select("*")
     .eq("instructor_id", instructorId)
@@ -961,7 +961,7 @@ export async function getInstructorClasses(
 
   // Get enrolled student counts per class
   const classIds = classes.map((c: { id: string }) => c.id);
-  const { data: enrollments } = await (supabase as any)
+  const { data: enrollments } = await supabase
     .from("class_enrollments")
     .select("class_id")
     .in("class_id", classIds)
@@ -985,7 +985,7 @@ export async function getClassById(
   classId: string
 ): Promise<InstructorClassRow | null> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("classes")
     .select("*")
     .eq("id", classId)
@@ -997,7 +997,7 @@ export async function getClassById(
   }
 
   // Get enrolled count
-  const { count } = await (supabase as any)
+  const { count } = await supabase
     .from("class_enrollments")
     .select("id", { count: "exact", head: true })
     .eq("class_id", classId)
@@ -1015,7 +1015,7 @@ export async function getClassStudents(
   const supabase = await createServerClient();
 
   // Get enrollment records
-  const { data: enrollments, error } = await (supabase as any)
+  const { data: enrollments, error } = await supabase
     .from("class_enrollments")
     .select("id, student_id, status, enrolled_at")
     .eq("class_id", classId)
@@ -1028,7 +1028,7 @@ export async function getClassStudents(
 
   // Get student profiles
   const studentIds = enrollments.map((e: { student_id: string }) => e.student_id);
-  const { data: profiles } = await (supabase as any)
+  const { data: profiles } = await supabase
     .from("profiles")
     .select("id, first_name, last_name, email")
     .in("id", studentIds);
@@ -1038,7 +1038,7 @@ export async function getClassStudents(
   );
 
   return enrollments.map(
-    (e: { id: string; student_id: string; status: string; enrolled_at: string }) => ({
+    (e: { id: string; student_id: string; status: string | null; enrolled_at: string | null }) => ({
       id: e.id,
       student_id: e.student_id,
       first_name: profileMap[e.student_id]?.first_name || null,
@@ -1059,7 +1059,7 @@ export async function getClassAttendance(
 ): Promise<AttendanceRow[]> {
   const supabase = await createServerClient();
 
-  let query = (supabase as any)
+  let query = supabase
     .from("attendance")
     .select("id, class_id, student_id, session_date, status, marked_at")
     .eq("class_id", classId)
@@ -1086,7 +1086,7 @@ export async function getClassSessionDates(
   classId: string
 ): Promise<string[]> {
   const supabase = await createServerClient();
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("attendance")
     .select("session_date")
     .eq("class_id", classId)
@@ -1115,7 +1115,7 @@ export async function getInstructorDashboardStats(
   const supabase = await createServerClient();
 
   // Get all classes for this instructor
-  const { data: classes, error } = await (supabase as any)
+  const { data: classes, error } = await supabase
     .from("classes")
     .select("id, is_active")
     .eq("instructor_id", instructorId);
@@ -1125,13 +1125,13 @@ export async function getInstructorDashboardStats(
   }
 
   const totalClasses = classes.length;
-  const activeClasses = classes.filter((c: { is_active: boolean }) => c.is_active).length;
+  const activeClasses = classes.filter((c: { is_active: boolean | null }) => c.is_active === true).length;
 
   // Get enrolled student count across all classes
   const classIds = classes.map((c: { id: string }) => c.id);
   let totalStudents = 0;
   if (classIds.length > 0) {
-    const { count } = await (supabase as any)
+    const { count } = await supabase
       .from("class_enrollments")
       .select("id", { count: "exact", head: true })
       .in("class_id", classIds)
@@ -1164,7 +1164,7 @@ export async function getInstructorEarnings(
   const supabase = await createServerClient();
 
   // Get active classes with pricing
-  const { data: classes, error } = await (supabase as any)
+  const { data: classes, error } = await supabase
     .from("classes")
     .select("id, name, price_cents, commission_rate, is_active")
     .eq("instructor_id", instructorId)
@@ -1176,7 +1176,7 @@ export async function getInstructorEarnings(
 
   // Get enrolled student counts per class
   const classIds = classes.map((c: { id: string }) => c.id);
-  const { data: enrollments } = await (supabase as any)
+  const { data: enrollments } = await supabase
     .from("class_enrollments")
     .select("class_id")
     .in("class_id", classIds)
@@ -1229,7 +1229,7 @@ export async function getInstructorStudents(
   const supabase = await createServerClient();
 
   // Get instructor's class IDs
-  const { data: classes } = await (supabase as any)
+  const { data: classes } = await supabase
     .from("classes")
     .select("id")
     .eq("instructor_id", instructorId);
@@ -1239,7 +1239,7 @@ export async function getInstructorStudents(
   const classIds = classes.map((c: { id: string }) => c.id);
 
   // Get enrolled student IDs
-  const { data: enrollments } = await (supabase as any)
+  const { data: enrollments } = await supabase
     .from("class_enrollments")
     .select("student_id")
     .in("class_id", classIds)
@@ -1250,7 +1250,7 @@ export async function getInstructorStudents(
   const studentIds = [...new Set(enrollments.map((e: { student_id: string }) => e.student_id))] as string[];
 
   // Get student profiles
-  const { data: profiles } = await (supabase as any)
+  const { data: profiles } = await supabase
     .from("profiles")
     .select("id, first_name, last_name, email")
     .in("id", studentIds)

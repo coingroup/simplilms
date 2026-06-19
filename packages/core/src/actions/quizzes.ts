@@ -28,7 +28,7 @@ export async function createQuiz(data: {
     const supabase = await createServerClient();
     const tenantId = getTenantId();
 
-    const { data: quiz, error } = await (supabase as any)
+    const { data: quiz, error } = await supabase
       .from("quizzes")
       .insert({
         tenant_id: tenantId,
@@ -94,9 +94,10 @@ export async function updateQuiz(
     if (data.showAnswersAfter !== undefined)
       updateData.show_answers_after = data.showAnswersAfter;
 
-    const { error } = await (supabase as any)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await supabase
       .from("quizzes")
-      .update(updateData)
+      .update(updateData as any)
       .eq("id", quizId);
 
     if (error) {
@@ -122,7 +123,7 @@ export async function deleteQuiz(
       return { success: false, error: "Insufficient permissions" };
 
     const supabase = await createServerClient();
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("quizzes")
       .delete()
       .eq("id", quizId);
@@ -164,16 +165,16 @@ export async function addQuestion(
     const tenantId = getTenantId();
 
     // Get next sort order
-    const { data: existing } = await (supabase as any)
+    const { data: existing } = await supabase
       .from("quiz_questions")
       .select("sort_order")
       .eq("quiz_id", quizId)
       .order("sort_order", { ascending: false })
       .limit(1);
 
-    const nextOrder = existing?.[0] ? existing[0].sort_order + 1 : 0;
+    const nextOrder = existing?.[0] ? (existing[0].sort_order ?? 0) + 1 : 0;
 
-    const { data: question, error } = await (supabase as any)
+    const { data: question, error } = await supabase
       .from("quiz_questions")
       .insert({
         tenant_id: tenantId,
@@ -225,9 +226,10 @@ export async function updateQuestion(
     if (data.options !== undefined) updateData.options = data.options;
     if (data.points !== undefined) updateData.points = data.points;
 
-    const { error } = await (supabase as any)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await supabase
       .from("quiz_questions")
-      .update(updateData)
+      .update(updateData as any)
       .eq("id", questionId);
 
     if (error) {
@@ -252,7 +254,7 @@ export async function deleteQuestion(
       return { success: false, error: "Insufficient permissions" };
 
     const supabase = await createServerClient();
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("quiz_questions")
       .delete()
       .eq("id", questionId);

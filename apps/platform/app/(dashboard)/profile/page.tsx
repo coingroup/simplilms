@@ -138,7 +138,7 @@ export default function ProfilePage() {
     } else if (userRole === "super_admin") {
       // Admins can update directly
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("profiles")
         .update({
           address: data.address || null,
