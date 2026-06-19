@@ -3,7 +3,7 @@ import Stripe from "stripe";
 import { getStripe } from "@simplilms/core/lib/stripe";
 import { getTenantId, buildTenantContext } from "@simplilms/core/lib/tenant";
 import { createClient } from "@supabase/supabase-js";
-import crypto from "crypto";
+
 
 const TENANT_ID = getTenantId();
 
@@ -322,19 +322,6 @@ async function provisionStudentCredentials(
   userId: string,
   applicationId: string
 ) {
-  // Generate temporary password
-  const tempPassword = crypto.randomBytes(12).toString("base64url");
-
-  // Set password on the user account
-  const { error: pwError } = await supabase.auth.admin.updateUserById(userId, {
-    password: tempPassword,
-  });
-
-  if (pwError) {
-    console.error("Error setting temporary password:", pwError);
-    return;
-  }
-
   // Fetch application for notification data
   const { data: application } = await supabase
     .from("applications")
@@ -342,11 +329,34 @@ async function provisionStudentCredentials(
     .eq("id", applicationId)
     .single();
 
+  if (!application?.email) {
+    console.error("No email found for application:", applicationId);
+    return;
+  }
+
+  // Generate a magic link instead of a temp password
+  const portalUrl =
+    process.env.NEXT_PUBLIC_PORTAL_URL || "http://localhost:3000";
+
+  const { data: linkData, error: linkError } =
+    await supabase.auth.admin.generateLink({
+      type: "magiclink",
+      email: application.email,
+      options: {
+        redirectTo: `${portalUrl}/auth/callback?next=/student`,
+      },
+    });
+
+  if (linkError) {
+    console.error("Error generating magic link:", linkError);
+    return;
+  }
+
+  const magicLink = linkData?.properties?.action_link;
+
   // Fire n8n webhook for enrollment confirmation + credentials
   const webhookUrl = process.env.N8N_WEBHOOK_ENROLLMENT_CONFIRMED;
   if (webhookUrl) {
-    const portalUrl =
-      process.env.NEXT_PUBLIC_PORTAL_URL || "http://localhost:3000";
     fetch(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -354,12 +364,12 @@ async function provisionStudentCredentials(
         event: "enrollment_confirmed",
         application_id: applicationId,
         user_id: userId,
-        first_name: application?.first_name,
-        last_name: application?.last_name,
-        email: application?.email,
-        phone: application?.phone,
-        program_id: application?.program_id,
-        temp_password: tempPassword,
+        first_name: application.first_name,
+        last_name: application.last_name,
+        email: application.email,
+        phone: application.phone,
+        program_id: application.program_id,
+        magic_link: magicLink,
         login_url: `${portalUrl}/login`,
         tenant_context: buildTenantContext(),
       }),
@@ -375,7 +385,7 @@ async function provisionStudentCredentials(
     action: "student_credentials_provisioned",
     entity_type: "profile",
     entity_id: userId,
-    new_values: { credentials_sent: true },
+    new_values: { credentials_sent: true, method: "magic_link" },
   });
 }
 

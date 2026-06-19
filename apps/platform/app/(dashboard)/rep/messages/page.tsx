@@ -16,7 +16,7 @@ interface RepMessagesPageProps {
 export default async function RepMessagesPage({
   searchParams,
 }: RepMessagesPageProps) {
-  await requireRole(["school_rep"]);
+  await requireRole(["super_admin", "school_rep"]);
 
   const params = await searchParams;
   const page = parseInt(params.page || "1", 10);

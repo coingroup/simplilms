@@ -14,7 +14,12 @@ import { createServerClient } from "@simplilms/auth/server";
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/";
+  let next = searchParams.get("next") ?? "/";
+
+  // Validate redirect path to prevent open redirect
+  if (!next.startsWith("/") || next.startsWith("//") || next.includes("://")) {
+    next = "/";
+  }
 
   if (code) {
     const supabase = createServerClient();

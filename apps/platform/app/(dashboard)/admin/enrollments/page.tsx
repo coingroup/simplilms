@@ -40,8 +40,11 @@ export default async function AdminEnrollmentsPage({
   searchParams,
 }: EnrollmentsPageProps) {
   const { user, error } = await getUser();
-  if (error || !user || user.role !== "super_admin") {
+  if (error || !user) {
     redirect("/login");
+  }
+  if (user.role !== "super_admin") {
+    redirect("/unauthorized");
   }
 
   const params = await searchParams;
