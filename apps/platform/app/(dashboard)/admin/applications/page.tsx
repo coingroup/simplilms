@@ -10,13 +10,14 @@ export const metadata = {
 export default async function AdminApplicationsPage({
   searchParams,
 }: {
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   await requireRole(["super_admin"]);
 
-  const status = (searchParams.status as ApplicationStatus) || undefined;
-  const search = (searchParams.search as string) || undefined;
-  const page = Number(searchParams.page) || 1;
+  const resolvedParams = await searchParams;
+  const status = (resolvedParams.status as ApplicationStatus) || undefined;
+  const search = (resolvedParams.search as string) || undefined;
+  const page = Number(resolvedParams.page) || 1;
   const pageSize = 20;
 
   const { applications, totalCount } = await getApplications({

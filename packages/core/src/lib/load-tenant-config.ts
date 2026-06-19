@@ -190,6 +190,7 @@ function getEnvFallbackConfig(): TenantConfig {
       sectorGovernment:
         process.env.NEXT_PUBLIC_SECTOR_GOVERNMENT === "true",
     },
+    activeSectors: [],
   };
 }
 

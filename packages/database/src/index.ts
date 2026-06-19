@@ -10,7 +10,11 @@ export type {
   Tables,
   TablesInsert,
   TablesUpdate,
+  Enums,
+  CompositeTypes,
 } from "./types";
+
+export { Constants } from "./types";
 
 import type { Database } from "./types";
 

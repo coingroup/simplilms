@@ -93,7 +93,7 @@ export function NotificationPreferencesCard({
           <Switch
             id="general-messages"
             checked={generalMessages}
-            onCheckedChange={(checked) =>
+            onCheckedChange={(checked: boolean) =>
               handleToggle("generalMessages", checked)
             }
             disabled={isPending}
@@ -113,7 +113,7 @@ export function NotificationPreferencesCard({
           <Switch
             id="class-reminders"
             checked={classReminders}
-            onCheckedChange={(checked) =>
+            onCheckedChange={(checked: boolean) =>
               handleToggle("classReminders", checked)
             }
             disabled={isPending}

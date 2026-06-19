@@ -36,7 +36,7 @@ interface ProfileRow {
  * ```
  */
 export async function getUser(): Promise<GetUserResult> {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
 
   const {
     data: { user },

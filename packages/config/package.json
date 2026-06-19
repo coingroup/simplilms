@@ -6,7 +6,12 @@
     "./tailwind": "./tailwind.config.ts",
     "./tsconfig/base": "./tsconfig/base.json",
     "./tsconfig/nextjs": "./tsconfig/nextjs.json",
-    "./tsconfig/react-library": "./tsconfig/react-library.json"
+    "./tsconfig/react-library": "./tsconfig/react-library.json",
+    "./eslint/base": "./eslint/base.js",
+    "./eslint/next": "./eslint/next.js"
+  },
+  "scripts": {
+    "lint": "eslint eslint/"
   },
   "dependencies": {
     "tailwindcss-animate": "^1.0.7"

@@ -31,7 +31,8 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Refresh the auth session (keeps cookies alive)
-  const { supabaseResponse, user, supabase } = await updateSession(request);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { supabaseResponse, user, supabase } = await updateSession(request as any);
 
   // Check if the current route is public
   const isPublicRoute = PUBLIC_ROUTES.some(

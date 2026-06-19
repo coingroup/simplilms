@@ -33,7 +33,7 @@ export interface WhitelabelTenantRow {
  * Fetch all whitelabel tenants (admin only).
  */
 export async function getWhitelabelTenants(): Promise<WhitelabelTenantRow[]> {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const { data, error } = await (supabase as any)
     .from("whitelabel_tenants")
     .select("*")
@@ -53,7 +53,7 @@ export async function getWhitelabelTenants(): Promise<WhitelabelTenantRow[]> {
 export async function getWhitelabelTenantById(
   id: string
 ): Promise<WhitelabelTenantRow | null> {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const { data, error } = await (supabase as any)
     .from("whitelabel_tenants")
     .select("*")
@@ -91,7 +91,7 @@ export async function createWhitelabelTenant(
     throw new Error("Tenant name is required");
   }
 
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
 
   const insertData: Record<string, unknown> = {
     name: name.trim(),
@@ -150,7 +150,7 @@ export async function updateWhitelabelTenant(
       return { success: false, error: "Invalid status" };
     }
 
-    const supabase = createServerClient();
+    const supabase = await createServerClient();
 
     const updateData: Record<string, unknown> = {
       name: name.trim(),

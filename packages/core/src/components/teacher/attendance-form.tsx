@@ -175,7 +175,7 @@ export function AttendanceForm({
                       <TableCell>
                         <Select
                           value={currentStatus || ""}
-                          onValueChange={(value) =>
+                          onValueChange={(value: string) =>
                             handleStatusChange(student.student_id, value as AttendanceStatus)
                           }
                         >

@@ -80,7 +80,7 @@ export function ProspectFilters({
       <div className="flex items-center gap-2">
         <Select
           value={currentStatus || "all"}
-          onValueChange={(value) =>
+          onValueChange={(value: string) =>
             updateParams("status", value === "all" ? null : value)
           }
         >
@@ -98,7 +98,7 @@ export function ProspectFilters({
 
         <Select
           value={currentSort || "newest"}
-          onValueChange={(value) => updateParams("sort", value)}
+          onValueChange={(value: string) => updateParams("sort", value)}
         >
           <SelectTrigger className="w-[130px]">
             <SelectValue placeholder="Sort" />
