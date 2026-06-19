@@ -105,7 +105,7 @@ npx turbo dev         # Dev server (platform: 3000, marketing: 3001)
 
 ## Current State
 
-**Last updated:** 2026-03-16
+**Last updated:** 2026-06-19
 
 ### Completed Phases
 - **Phase 1-10:** Foundation, public website, portal auth, admin CRM, application flow, payment processing, student portal, instructor portal, n8n workflows, white-label multi-tenancy
@@ -117,6 +117,36 @@ npx turbo dev         # Dev server (platform: 3000, marketing: 3001)
 - **Phase 15:** Course edit page, quiz builder, student course catalog/browse
 - **Phase 16:** Advanced analytics dashboard with real data — 9 query functions, pure CSS charts, course drill-down, at-risk students, CSV exports
 - **Phase 17:** Admin settings UI with 4 tabbed forms — Organization, Branding (live color preview), Features (16 toggles), Notifications
+- **Security Audit:** Comprehensive security + trace audit completed (see below)
+
+### Security Audit (completed 2026-06-19)
+
+Full security and trace audit across auth, RLS, OWASP top 10, data flow, dependencies, and configuration. All CRITICAL, HIGH, MEDIUM, and LOW findings resolved across 3 PRs.
+
+**Fixes applied:**
+- Removed `SUPABASE_SERVICE_ROLE_KEY` from n8n webhook payloads (`buildTenantContext`)
+- Added auth + role guards to all analytics (9 functions), AI course (8 functions), and sector module (3 functions) server actions
+- Added auth to `/api/remarketing/send` endpoint
+- Fixed `deleteAiInterview` to scope by `tenant_id` and `created_by`
+- Added HTML sanitization via `isomorphic-dompurify` for lesson content (`dangerouslySetInnerHTML`)
+- Fixed `certificates_public_verify` RLS policy — was exposing all certificates publicly
+- Added HTTP security headers (X-Frame-Options, HSTS, X-Content-Type-Options, Referrer-Policy, Permissions-Policy)
+- Fixed vulnerable transitive deps via npm overrides (`@xmldom/xmldom`, `picomatch`, `ws`)
+- Added rate limiting (10 req/min) and message size cap (10K chars) to AI interview API
+- Replaced cleartext temp passwords with Supabase magic links in payment webhook
+- Fixed open redirect in auth callback (`next` param validation)
+- Fixed `super_admin` blocked from `/rep/messages`
+- Fixed wrong redirect in `admin/enrollments` (login → unauthorized)
+- Fixed `ai_course_interviews` trigger referencing nonexistent function
+
+**Deferred (infrastructure):**
+- Regenerate Supabase types to eliminate 200+ `(supabase as any)` casts
+- Next.js 15 upgrade (14 CVEs in Next.js 14.x — requires breaking change migration)
+- ESLint setup across all packages (no `.eslintrc` files exist yet)
+
+### CI/CD & Branch Protection
+- **GitHub Actions** — `test-staging` workflow runs type-check + build on all PRs to `main`
+- **Branch protection** — PRs required, 1 approval, `test-staging` must pass, enforce for admins, linear history, conversation resolution required, no force pushes
 
 ### Platform Summary
 - **`apps/platform`** — 45+ routes + middleware
@@ -130,16 +160,16 @@ npx turbo dev         # Dev server (platform: 3000, marketing: 3001)
 - **`apps/marketing`** — 14 statically generated pages (landing, pricing, 8 industry pages, industries hub)
 - **`packages/core`** — 80+ shared files (actions, components, lib)
 - **`packages/ui`** — 18 shadcn/ui components
-- **`supabase/`** — 10 migration files
-- **`n8n/`** — 15 workflow JSONs
+- **`supabase/`** — 12 migration files
+- **`n8n/`** — 15 workflow JSONs (COIN Education-specific, see `docs/coin-education-relationship.md`)
 - **`scripts/`** — Tenant provisioning CLI
+- **`.github/workflows/`** — CI pipeline (`test-staging.yml`)
 
-### Recent Commits
-- `51e2057` — Phase 17: Admin settings UI with tabbed forms (6 files, 1,461 lines)
-- `2cdd41e` — Phase 16: Advanced analytics dashboard with real data (13 files, 2,527 lines)
-- `2c6f4e0` — Fix dead sidebar nav links + missing loading skeletons (19 files, 863 lines)
-- `3357947` — Phase 15: Course edit page, quiz builder, student course catalog
-- `997e18a` — Phase 14: Lesson content editor, enrollment management, quiz-taking UI
+### COIN Education Relationship
+COIN Education is the first tenant of SimpliLMS. They share the same codebase but COIN Education's Supabase schema has diverged significantly (46 tables vs 38, different column structures on shared tables). See `docs/coin-education-relationship.md` for full details including:
+- How code, n8n, and Supabase relate between the two
+- Schema divergence inventory
+- Known issues (payment flow broken due to missing `payment_token` column and Stripe webhook signature mismatch)
 
 ### In Progress
 - None
@@ -152,7 +182,9 @@ npx turbo dev         # Dev server (platform: 3000, marketing: 3001)
 
 ### Blockers / Decisions Pending
 - simplilms.com domain registration needed
-- First tenant (COIN Education) needs to be configured as a deployment
-- Supabase migrations need to be applied: LMS, AI interviews, sectors, tenant settings
+- COIN Education schema reconciliation needed (see `docs/coin-education-relationship.md`)
+- Supabase migrations need to be applied: LMS, AI interviews, sectors, tenant settings, security fixes
 - `ANTHROPIC_API_KEY` environment variable needed for AI Course Creator
 - Stripe env vars needed for payment flow end-to-end
+- COIN Education Stripe webhook secret mismatch needs fixing in Stripe dashboard
+- n8n enrollment workflow needs updating — now receives `magic_link` instead of `temp_password`
