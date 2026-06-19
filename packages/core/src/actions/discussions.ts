@@ -77,7 +77,7 @@ export async function getDiscussionThreads(
 
   const supabase = await createServerClient();
 
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("discussion_threads")
     .select(
       `
@@ -95,7 +95,7 @@ export async function getDiscussionThreads(
     return [];
   }
 
-  return (data ?? []) as DiscussionThreadRow[];
+  return (data ?? []) as unknown as DiscussionThreadRow[];
 }
 
 /**
@@ -109,7 +109,7 @@ export async function getDiscussionThread(
 
   const supabase = await createServerClient();
 
-  const { data: thread, error: threadError } = await (supabase as any)
+  const { data: thread, error: threadError } = await supabase
     .from("discussion_threads")
     .select(
       `
@@ -125,7 +125,7 @@ export async function getDiscussionThread(
     return null;
   }
 
-  const { data: posts, error: postsError } = await (supabase as any)
+  const { data: posts, error: postsError } = await supabase
     .from("discussion_posts")
     .select(
       `
@@ -142,8 +142,8 @@ export async function getDiscussionThread(
 
   return {
     ...thread,
-    posts: (posts ?? []) as DiscussionPostRow[],
-  } as ThreadWithPosts;
+    posts: (posts ?? []) as unknown as DiscussionPostRow[],
+  } as unknown as ThreadWithPosts;
 }
 
 // ============================================================
@@ -172,6 +172,7 @@ export async function createDiscussionThread(
     const tenantId = await getTenantId();
     const supabase = await createServerClient();
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase as any)
       .from("discussion_threads")
       .insert({
@@ -219,7 +220,7 @@ export async function createDiscussionPost(
 
     // Fetch the thread to get course_id, tenant_id, and lock status
     const supabase = await createServerClient();
-    const { data: thread, error: threadError } = await (supabase as any)
+    const { data: thread, error: threadError } = await supabase
       .from("discussion_threads")
       .select("id, course_id, tenant_id, is_locked")
       .eq("id", threadId)
@@ -235,6 +236,7 @@ export async function createDiscussionPost(
 
     const isInstructorPost = ["teacher_paid", "teacher_unpaid", "super_admin", "school_rep"].includes(user.role);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase as any)
       .from("discussion_posts")
       .insert({
@@ -291,7 +293,7 @@ async function setThreadPinned(
 
     const supabase = await createServerClient();
 
-    const { data: thread, error: fetchError } = await (supabase as any)
+    const { data: thread, error: fetchError } = await supabase
       .from("discussion_threads")
       .select("course_id")
       .eq("id", threadId)
@@ -299,7 +301,7 @@ async function setThreadPinned(
 
     if (fetchError || !thread) return { success: false, error: "Thread not found" };
 
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("discussion_threads")
       .update({ is_pinned: pinned })
       .eq("id", threadId);
@@ -333,7 +335,7 @@ export async function lockThread(
 
     const supabase = await createServerClient();
 
-    const { data: thread, error: fetchError } = await (supabase as any)
+    const { data: thread, error: fetchError } = await supabase
       .from("discussion_threads")
       .select("course_id")
       .eq("id", threadId)
@@ -341,7 +343,7 @@ export async function lockThread(
 
     if (fetchError || !thread) return { success: false, error: "Thread not found" };
 
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("discussion_threads")
       .update({ is_locked: locked })
       .eq("id", threadId);
@@ -375,7 +377,7 @@ export async function deleteThread(
 
     const supabase = await createServerClient();
 
-    const { data: thread, error: fetchError } = await (supabase as any)
+    const { data: thread, error: fetchError } = await supabase
       .from("discussion_threads")
       .select("course_id")
       .eq("id", threadId)
@@ -383,7 +385,7 @@ export async function deleteThread(
 
     if (fetchError || !thread) return { success: false, error: "Thread not found" };
 
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("discussion_threads")
       .delete()
       .eq("id", threadId);
@@ -416,7 +418,7 @@ export async function deletePost(
 
     const supabase = await createServerClient();
 
-    const { data: post, error: fetchError } = await (supabase as any)
+    const { data: post, error: fetchError } = await supabase
       .from("discussion_posts")
       .select("author_id, thread_id, discussion_threads!inner(course_id)")
       .eq("id", postId)
@@ -429,7 +431,7 @@ export async function deletePost(
       return { success: false, error: "Forbidden" };
     }
 
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("discussion_posts")
       .delete()
       .eq("id", postId);

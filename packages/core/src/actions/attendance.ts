@@ -29,7 +29,7 @@ export async function markAttendance(data: {
 
     // Check if attendance record already exists for this student/class/date
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existing } = await (supabase as any)
+    const { data: existing } = await supabase
       .from("attendance")
       .select("id")
       .eq("class_id", data.classId)
@@ -40,7 +40,7 @@ export async function markAttendance(data: {
     if (existing) {
       // Update existing record
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("attendance")
         .update({
           status: data.status,
@@ -56,7 +56,7 @@ export async function markAttendance(data: {
     } else {
       // Insert new record
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("attendance")
         .insert({
           tenant_id: tenantId,
@@ -111,7 +111,7 @@ export async function markBulkAttendance(data: {
 
     // Get existing attendance records for this class/date
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existingRecords } = await (supabase as any)
+    const { data: existingRecords } = await supabase
       .from("attendance")
       .select("id, student_id")
       .eq("class_id", data.classId)
@@ -146,9 +146,10 @@ export async function markBulkAttendance(data: {
     // Batch insert new records
     if (toInsert.length > 0) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: insertError } = await (supabase as any)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: insertError } = await supabase
         .from("attendance")
-        .insert(toInsert);
+        .insert(toInsert as any);
 
       if (insertError) {
         console.error("Error inserting bulk attendance:", insertError);
@@ -159,7 +160,7 @@ export async function markBulkAttendance(data: {
     // Update existing records one by one (Supabase doesn't support batch update with different values)
     for (const record of toUpdate) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: updateError } = await (supabase as any)
+      const { error: updateError } = await supabase
         .from("attendance")
         .update({
           status: record.status,

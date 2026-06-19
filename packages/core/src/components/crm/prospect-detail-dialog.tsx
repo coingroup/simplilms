@@ -37,7 +37,7 @@ export function ProspectDetailDialog({
 
   const fetchCommunicationLog = async (prospectId: string) => {
     const supabase = createBrowserClient();
-    const { data } = await (supabase as any)
+    const { data } = await supabase
       .from("communication_log")
       .select("*")
       .eq("recipient_id", prospectId)

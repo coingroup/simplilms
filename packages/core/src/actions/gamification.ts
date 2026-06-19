@@ -79,6 +79,7 @@ export async function awardPoints(
     const tenantId = getTenantId();
     const points = pointsOverride ?? POINT_VALUES[action];
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any)
       .from("student_points")
       .insert({
@@ -116,6 +117,7 @@ export async function getStudentPoints(studentId?: string): Promise<{
     const targetId = studentId ?? user.user.id;
     const supabase = await createServerClient();
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase as any)
       .from("student_points")
       .select("*")
@@ -127,7 +129,7 @@ export async function getStudentPoints(studentId?: string): Promise<{
       return { total: 0, recent: [] };
     }
 
-    const rows = (data || []) as StudentPointsRow[];
+    const rows = (data || []) as unknown as StudentPointsRow[];
     const total = rows.reduce((sum, r) => sum + r.points, 0);
     return { total, recent: rows.slice(0, 20) };
   } catch (err) {
@@ -146,7 +148,7 @@ export async function getStudentStreak(
     const targetId = studentId ?? user.user.id;
     const supabase = await createServerClient();
 
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from("student_streaks")
       .select("*")
       .eq("student_id", targetId)
@@ -157,7 +159,7 @@ export async function getStudentStreak(
       return null;
     }
 
-    return (data as StudentStreakRow) ?? null;
+    return (data as unknown as StudentStreakRow) ?? null;
   } catch (err) {
     console.error("getStudentStreak error:", err);
     return null;
@@ -174,7 +176,7 @@ export async function getStudentBadges(
     const targetId = studentId ?? user.user.id;
     const supabase = await createServerClient();
 
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from("student_badges")
       .select("*")
       .eq("student_id", targetId)
@@ -200,7 +202,7 @@ export async function getLeaderboard(
     const tenantId = getTenantId();
 
     // Sum points per student
-    const { data: pointsData, error: pointsError } = await (supabase as any)
+    const { data: pointsData, error: pointsError } = await supabase
       .from("student_points")
       .select("student_id, points")
       .eq("tenant_id", tenantId);
@@ -226,7 +228,7 @@ export async function getLeaderboard(
     const studentIds = sorted.map(([id]) => id);
 
     // Fetch profiles
-    const { data: profiles, error: profilesError } = await (supabase as any)
+    const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
       .select("id, first_name, last_name")
       .in("id", studentIds);
@@ -249,7 +251,7 @@ export async function getLeaderboard(
     }
 
     // Fetch badge counts
-    const { data: badgesData, error: badgesError } = await (supabase as any)
+    const { data: badgesData, error: badgesError } = await supabase
       .from("student_badges")
       .select("student_id")
       .eq("tenant_id", tenantId)
@@ -342,7 +344,7 @@ export async function updateStreak(
     const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
 
     // Fetch existing streak record
-    const { data: existing } = await (supabase as any)
+    const { data: existing } = await supabase
       .from("student_streaks")
       .select("*")
       .eq("tenant_id", tenantId)
@@ -354,13 +356,15 @@ export async function updateStreak(
     let streakStartDate = today;
     let streakBroken = false;
 
-    if (existing) {
-      longestStreak = existing.longest_streak;
-      const lastDate = existing.last_activity_date;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const existingRow = existing as any;
+    if (existingRow) {
+      longestStreak = existingRow.longest_streak ?? 1;
+      const lastDate = existingRow.last_activity_date;
 
       if (lastDate === today) {
         // Already logged activity today — no change
-        return { success: true, streakBroken: false, newStreak: existing.current_streak };
+        return { success: true, streakBroken: false, newStreak: existingRow.current_streak ?? 1 };
       }
 
       const lastDateObj = lastDate ? new Date(lastDate) : null;
@@ -373,8 +377,8 @@ export async function updateStreak(
 
         if (diffDays === 1) {
           // Consecutive day — extend streak
-          newStreak = existing.current_streak + 1;
-          streakStartDate = existing.streak_start_date ?? today;
+          newStreak = (existingRow.current_streak ?? 0) + 1;
+          streakStartDate = existingRow.streak_start_date ?? today;
         } else {
           // Streak broken
           newStreak = 1;
@@ -385,6 +389,7 @@ export async function updateStreak(
 
       longestStreak = Math.max(longestStreak, newStreak);
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any)
         .from("student_streaks")
         .update({
@@ -393,7 +398,7 @@ export async function updateStreak(
           last_activity_date: today,
           streak_start_date: streakStartDate,
         })
-        .eq("id", existing.id);
+        .eq("id", existingRow.id);
 
       if (error) {
         console.error("updateStreak update error:", error);
@@ -401,6 +406,7 @@ export async function updateStreak(
       }
     } else {
       // First-ever activity
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any)
         .from("student_streaks")
         .insert({
@@ -445,7 +451,7 @@ async function awardBadge(
   const tenantId = getTenantId();
 
   // Upsert — UNIQUE constraint prevents duplicates
-  await (supabase as any)
+  await supabase
     .from("student_badges")
     .upsert(
       {
@@ -469,7 +475,7 @@ export async function checkAndAwardBadges(
     const tenantId = getTenantId();
 
     // Fetch existing badges to avoid re-awarding
-    const { data: existingBadges } = await (supabase as any)
+    const { data: existingBadges } = await supabase
       .from("student_badges")
       .select("badge_key")
       .eq("tenant_id", tenantId)
@@ -482,13 +488,14 @@ export async function checkAndAwardBadges(
     );
 
     // Fetch points history once
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: pointsData } = await (supabase as any)
       .from("student_points")
       .select("action, reference_id")
       .eq("tenant_id", tenantId)
       .eq("student_id", studentId);
 
-    const allPoints = (pointsData || []) as {
+    const allPoints = (pointsData || []) as unknown as {
       action: PointAction;
       reference_id: string | null;
     }[];
@@ -546,7 +553,7 @@ export async function checkAndAwardBadges(
     }
 
     // week_warrior / month_master — check via streaks table
-    const { data: streakData } = await (supabase as any)
+    const { data: streakData } = await supabase
       .from("student_streaks")
       .select("longest_streak")
       .eq("tenant_id", tenantId)

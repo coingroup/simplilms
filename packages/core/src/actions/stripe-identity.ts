@@ -38,7 +38,7 @@ export async function createIdentitySession(
 
     // Update application with session ID
     const supabase = await createServerClient();
-    await (supabase as any)
+    await supabase
       .from("applications")
       .update({
         stripe_identity_session_id: verificationSession.id,

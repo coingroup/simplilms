@@ -20,7 +20,7 @@ export async function updateNotificationPreferences(prefs: {
 
     const supabase = await createServerClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any).rpc("update_notification_preferences", {
+    const { error } = await supabase.rpc("update_notification_preferences", {
       p_general_messages: prefs.generalMessages,
       p_class_reminders: prefs.classReminders,
     });

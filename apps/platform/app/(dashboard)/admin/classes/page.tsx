@@ -11,7 +11,7 @@ export default async function AdminClassesPage() {
   await requireRole(["super_admin"]);
 
   const supabase = await createServerClient();
-  const { data: classes, error } = await (supabase as any)
+  const { data: classes, error } = await supabase
     .from("classes")
     .select(
       "id, name, description, is_active, max_students, commission_rate, price_cents, created_at, instructor:profiles!classes_instructor_id_fkey(first_name, last_name)"
