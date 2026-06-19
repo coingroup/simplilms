@@ -21,8 +21,8 @@ import type { Database } from "@simplilms/database";
  * }
  * ```
  */
-export function createServerClient() {
-  const cookieStore = cookies();
+export async function createServerClient() {
+  const cookieStore = await cookies();
 
   return createSSRServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

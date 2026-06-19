@@ -118,7 +118,7 @@ export function QuestionBankBrowser({
 
             <Select
               value={selectedTopic}
-              onValueChange={(v) => {
+              onValueChange={(v: string) => {
                 setSelectedTopic(v);
                 handleFilterChange();
               }}
@@ -138,7 +138,7 @@ export function QuestionBankBrowser({
 
             <Select
               value={selectedDifficulty}
-              onValueChange={(v) => {
+              onValueChange={(v: string) => {
                 setSelectedDifficulty(v);
                 handleFilterChange();
               }}
@@ -156,7 +156,7 @@ export function QuestionBankBrowser({
 
             <Select
               value={selectedType}
-              onValueChange={(v) => {
+              onValueChange={(v: string) => {
                 setSelectedType(v);
                 handleFilterChange();
               }}

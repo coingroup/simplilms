@@ -945,7 +945,7 @@ export async function getCourseAnalytics(
 
   // Top students (by progress)
   const studentIds = enrollments.map((e: { student_id: string }) => e.student_id);
-  let profileMap: Record<
+  const profileMap: Record<
     string,
     { first_name: string | null; last_name: string | null }
   > = {};

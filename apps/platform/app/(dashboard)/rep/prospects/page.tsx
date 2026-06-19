@@ -13,14 +13,15 @@ export const metadata = {
 export default async function RepProspectsPage({
   searchParams,
 }: {
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   await requireRole(["super_admin", "school_rep"]);
 
-  const status = (searchParams.status as EligibilityStatus) || undefined;
-  const search = (searchParams.search as string) || undefined;
-  const sort = (searchParams.sort as "newest" | "oldest") || "newest";
-  const page = Number(searchParams.page) || 1;
+  const resolvedParams = await searchParams;
+  const status = (resolvedParams.status as EligibilityStatus) || undefined;
+  const search = (resolvedParams.search as string) || undefined;
+  const sort = (resolvedParams.sort as "newest" | "oldest") || "newest";
+  const page = Number(resolvedParams.page) || 1;
   const pageSize = 20;
 
   const { prospects, totalCount } = await getProspects({

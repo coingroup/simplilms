@@ -227,7 +227,7 @@ export function LessonEditorClient({
               <Label>Content Type</Label>
               <Select
                 value={contentType}
-                onValueChange={(v) => setContentType(v as LessonRow["content_type"])}
+                onValueChange={(v: string) => setContentType(v as LessonRow["content_type"])}
                 disabled={isPending}
               >
                 <SelectTrigger>
