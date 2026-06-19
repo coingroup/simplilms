@@ -31,7 +31,7 @@ SimpliLMS is an all-in-one SaaS platform for training schools and education busi
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | Next.js 14 / React / Tailwind CSS / shadcn/ui |
+| Frontend | Next.js 15 / React 19 / Tailwind CSS / shadcn/ui |
 | Hosting | Vercel |
 | Database | Supabase PostgreSQL (one project per tenant) |
 | Auth | Supabase Auth (email + magic link) |
@@ -117,50 +117,46 @@ npx turbo dev         # Dev server (platform: 3000, marketing: 3001)
 - **Phase 15:** Course edit page, quiz builder, student course catalog/browse
 - **Phase 16:** Advanced analytics dashboard with real data — 9 query functions, pure CSS charts, course drill-down, at-risk students, CSV exports
 - **Phase 17:** Admin settings UI with 4 tabbed forms — Organization, Branding (live color preview), Features (16 toggles), Notifications
-- **Security Audit:** Comprehensive security + trace audit completed (see below)
+- **Security Audit:** Comprehensive security + trace audit — all CRITICAL/HIGH/MEDIUM/LOW findings resolved
+- **Infrastructure:** ESLint setup, Supabase type regeneration, Next.js 15.5.19 upgrade (React 19)
+- **Phase 18:** Discussion Forums — threaded discussions per course, replies, pin/lock/delete moderation, student + admin views
+- **Phase 19:** Gamification & Engagement — points (8 actions), streaks, 8 badge types, leaderboard, student dashboard integration
+- **Phase 20:** Live Classes / Zoom — session scheduling, countdown timers, Zoom embed, recording management, student/teacher/admin views
+- **Phase 21:** Polish & Launch Prep — error boundaries, 62 loading skeletons (every route), SEO metadata, accessibility, production next.config
 
 ### Security Audit (completed 2026-06-19)
 
-Full security and trace audit across auth, RLS, OWASP top 10, data flow, dependencies, and configuration. All CRITICAL, HIGH, MEDIUM, and LOW findings resolved across 3 PRs.
+Full security and trace audit across auth, RLS, OWASP top 10, data flow, dependencies, and configuration. All findings resolved across 3 PRs.
 
-**Fixes applied:**
-- Removed `SUPABASE_SERVICE_ROLE_KEY` from n8n webhook payloads (`buildTenantContext`)
-- Added auth + role guards to all analytics (9 functions), AI course (8 functions), and sector module (3 functions) server actions
-- Added auth to `/api/remarketing/send` endpoint
-- Fixed `deleteAiInterview` to scope by `tenant_id` and `created_by`
-- Added HTML sanitization via `isomorphic-dompurify` for lesson content (`dangerouslySetInnerHTML`)
-- Fixed `certificates_public_verify` RLS policy — was exposing all certificates publicly
-- Added HTTP security headers (X-Frame-Options, HSTS, X-Content-Type-Options, Referrer-Policy, Permissions-Policy)
-- Fixed vulnerable transitive deps via npm overrides (`@xmldom/xmldom`, `picomatch`, `ws`)
-- Added rate limiting (10 req/min) and message size cap (10K chars) to AI interview API
-- Replaced cleartext temp passwords with Supabase magic links in payment webhook
-- Fixed open redirect in auth callback (`next` param validation)
-- Fixed `super_admin` blocked from `/rep/messages`
-- Fixed wrong redirect in `admin/enrollments` (login → unauthorized)
-- Fixed `ai_course_interviews` trigger referencing nonexistent function
+Key fixes: removed service role key from webhook payloads, added auth guards to 20+ server actions, HTML sanitization via DOMPurify, fixed certificates RLS, added security headers, rate limiting on AI API, replaced temp passwords with magic links, fixed open redirect, fixed broken trigger, patched vulnerable deps.
 
-**Deferred (infrastructure):**
-- Regenerate Supabase types to eliminate 200+ `(supabase as any)` casts
-- Next.js 15 upgrade (14 CVEs in Next.js 14.x — requires breaking change migration)
-- ESLint setup across all packages (no `.eslintrc` files exist yet)
+### Infrastructure (completed 2026-06-19)
+
+- **ESLint** — shared config in `packages/config/eslint`, `.eslintrc.js` in all 7 packages, lint enabled in CI
+- **Supabase types** — full types regenerated from schema (38 tables, 2,673 lines) in `packages/database/src/types.ts`
+- **Next.js 15.5.19** — upgraded from 14.2.x, React 19, resolves 14 CVEs. Breaking changes handled: async `cookies()`, Promise `params`/`searchParams`, Radix UI type fixes
 
 ### CI/CD & Branch Protection
-- **GitHub Actions** — `test-staging` workflow runs type-check + build on all PRs to `main`
+- **GitHub Actions** — `test-staging` workflow runs lint + type-check + build on all PRs to `main`
 - **Branch protection** — PRs required, 1 approval, `test-staging` must pass, enforce for admins, linear history, conversation resolution required, no force pushes
 
 ### Platform Summary
-- **`apps/platform`** — 45+ routes + middleware
+- **`apps/platform`** — 70+ routes + middleware
   - Admissions CRM, application flow, Stripe payments, student/instructor/admin portals
   - Core LMS with course builder, quiz engine, certificates
   - AI Course Creator (Claude API)
+  - Discussion forums per course with moderation
+  - Gamification: points, streaks, badges, leaderboard
+  - Live classes with Zoom integration and recordings
   - Advanced analytics with drill-downs and CSV export
   - Self-serve admin settings (organization, branding, features, notifications)
   - Sector module admin panel + question banks
+  - Error boundaries + loading skeletons on every route
   - Role-based access (5 roles: super_admin, school_rep, teacher_paid, teacher_unpaid, student)
 - **`apps/marketing`** — 14 statically generated pages (landing, pricing, 8 industry pages, industries hub)
-- **`packages/core`** — 80+ shared files (actions, components, lib)
+- **`packages/core`** — 100+ shared files (actions, components, lib)
 - **`packages/ui`** — 18 shadcn/ui components
-- **`supabase/`** — 12 migration files
+- **`supabase/`** — 17 migration files
 - **`n8n/`** — 15 workflow JSONs (COIN Education-specific, see `docs/coin-education-relationship.md`)
 - **`scripts/`** — Tenant provisioning CLI
 - **`.github/workflows/`** — CI pipeline (`test-staging.yml`)
@@ -174,17 +170,13 @@ COIN Education is the first tenant of SimpliLMS. They share the same codebase bu
 ### In Progress
 - None
 
-### Next (Remaining Phases — ~3-4 left)
-1. **Discussion Forums** — threaded discussions per course, student/instructor participation, moderation
-2. **Gamification & Engagement** — points, streaks, leaderboards, achievement badges
-3. **Live Classes / Zoom Integration** — schedule live sessions, in-portal Zoom embed, recording access
-4. **Polish & Launch Prep** — error boundaries, loading states audit, accessibility, SEO, production env setup
+### All Phases Complete
+The SimpliLMS platform feature set is complete (Phases 1-21). Remaining work is deployment, tenant onboarding, and operational.
 
 ### Blockers / Decisions Pending
-- simplilms.com domain registration needed
 - COIN Education schema reconciliation needed (see `docs/coin-education-relationship.md`)
-- Supabase migrations need to be applied: LMS, AI interviews, sectors, tenant settings, security fixes
 - `ANTHROPIC_API_KEY` environment variable needed for AI Course Creator
 - Stripe env vars needed for payment flow end-to-end
 - COIN Education Stripe webhook secret mismatch needs fixing in Stripe dashboard
 - n8n enrollment workflow needs updating — now receives `magic_link` instead of `temp_password`
+- Supabase `as any` cast removal (200+ instances) — types are generated, removal is incremental
