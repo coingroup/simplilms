@@ -63,10 +63,15 @@ export interface AiCourseInterviewRow {
 // ============================================================
 
 export async function getAiInterviews(): Promise<AiCourseInterviewRow[]> {
+  const { user, error: authError } = await getUser();
+  if (authError || !user) return [];
+  if (user.role !== "super_admin") return [];
+
   const supabase = await createServerClient();
   const { data, error } = await (supabase as any)
     .from("ai_course_interviews")
     .select("*")
+    .eq("tenant_id", getTenantId())
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -79,11 +84,16 @@ export async function getAiInterviews(): Promise<AiCourseInterviewRow[]> {
 export async function getAiInterview(
   id: string
 ): Promise<AiCourseInterviewRow | null> {
+  const { user, error: authError } = await getUser();
+  if (authError || !user) return null;
+  if (user.role !== "super_admin") return null;
+
   const supabase = await createServerClient();
   const { data, error } = await (supabase as any)
     .from("ai_course_interviews")
     .select("*")
     .eq("id", id)
+    .eq("tenant_id", getTenantId())
     .single();
 
   if (error) {
@@ -103,6 +113,7 @@ export async function startInterview(formData: FormData): Promise<{
 }> {
   const { user, error: authError } = await getUser();
   if (authError || !user) return { interviewId: null, error: "Not authenticated" };
+  if (user.role !== "super_admin") return { interviewId: null, error: "Unauthorized" };
 
   const topic = formData.get("topic") as string;
   const targetAudience = formData.get("targetAudience") as string;
@@ -242,6 +253,12 @@ export async function sendInterviewMessage(
       readyToGenerate: false,
       error: "Not authenticated",
     };
+  if (user.role !== "super_admin")
+    return {
+      assistantMessage: "",
+      readyToGenerate: false,
+      error: "Unauthorized",
+    };
 
   const supabase = await createServerClient();
   const { data: interview, error: fetchError } = await (supabase as any)
@@ -357,6 +374,7 @@ export async function generateCourseFromInterview(
 }> {
   const { user, error: authError } = await getUser();
   if (authError || !user) return { outline: null, error: "Not authenticated" };
+  if (user.role !== "super_admin") return { outline: null, error: "Unauthorized" };
 
   const supabase = await createServerClient();
   const { data: interview, error: fetchError } = await (supabase as any)
@@ -511,6 +529,7 @@ export async function createCourseFromOutline(
 }> {
   const { user, error: authError } = await getUser();
   if (authError || !user) return { courseId: null, error: "Not authenticated" };
+  if (user.role !== "super_admin") return { courseId: null, error: "Unauthorized" };
 
   const supabase = await createServerClient();
   const { data: interview, error: fetchError } = await (supabase as any)
@@ -715,6 +734,7 @@ export async function addDocumentToInterview(
 }> {
   const { user, error: authError } = await getUser();
   if (authError || !user) return { success: false, error: "Not authenticated" };
+  if (user.role !== "super_admin") return { success: false, error: "Unauthorized" };
 
   const file = formData.get("file") as File;
   if (!file) return { success: false, error: "No file provided" };
@@ -792,12 +812,15 @@ export async function deleteAiInterview(
 ): Promise<{ success: boolean; error?: string }> {
   const { user, error: authError } = await getUser();
   if (authError || !user) return { success: false, error: "Not authenticated" };
+  if (user.role !== "super_admin") return { success: false, error: "Unauthorized" };
 
   const supabase = await createServerClient();
   const { error } = await (supabase as any)
     .from("ai_course_interviews")
     .delete()
-    .eq("id", interviewId);
+    .eq("id", interviewId)
+    .eq("tenant_id", getTenantId())
+    .eq("created_by", user.user.id);
 
   if (error) {
     console.error("Error deleting AI interview:", error);

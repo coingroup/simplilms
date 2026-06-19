@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getUser } from "@simplilms/auth/server";
 
 /**
  * POST /api/remarketing/send
@@ -9,6 +10,14 @@ import { NextRequest, NextResponse } from "next/server";
  */
 export async function POST(request: NextRequest) {
   try {
+    const { user, error: authError } = await getUser();
+    if (authError || !user) {
+      return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 });
+    }
+    if (!["super_admin", "school_rep"].includes(user.role)) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 403 });
+    }
+
     const body = await request.json();
     const webhookUrl = process.env.N8N_REMARKETING_WEBHOOK_URL;
 

@@ -38,13 +38,13 @@ export function getTenantName(): string {
 
 /**
  * Build tenant context object for n8n webhook payloads.
- * Includes Supabase credentials so n8n can write to the correct database.
+ * n8n workflows should use their own stored Supabase credentials
+ * rather than receiving the service role key in every payload.
  */
 export function buildTenantContext() {
   return {
     tenant_id: getTenantId(),
     supabase_url: process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-    supabase_key: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
     tenant_name: getTenantName(),
     tenant_email: getTenantEmail(),
     tenant_website: getTenantWebsiteUrl(),

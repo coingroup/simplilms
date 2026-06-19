@@ -1,6 +1,13 @@
 "use server";
 
-import { createServerClient } from "@simplilms/auth/server";
+import { createServerClient, getUser } from "@simplilms/auth/server";
+
+async function requireAdmin() {
+  const { user, error } = await getUser();
+  if (error || !user) throw new Error("Not authenticated");
+  if (user.role !== "super_admin") throw new Error("Unauthorized");
+  return user;
+}
 
 // ============================================================
 // Types
@@ -80,6 +87,7 @@ export interface StudentActivityRow {
 // ============================================================
 
 export async function getAnalyticsOverview(): Promise<OverviewStats> {
+  await requireAdmin();
   const supabase = await createServerClient();
 
   const [
@@ -184,6 +192,7 @@ export async function getAnalyticsOverview(): Promise<OverviewStats> {
 export async function getEnrollmentTrends(
   days: number = 30
 ): Promise<EnrollmentTrendPoint[]> {
+  await requireAdmin();
   const supabase = await createServerClient();
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
@@ -226,6 +235,7 @@ export async function getEnrollmentTrends(
 // ============================================================
 
 export async function getCoursePerformance(): Promise<CoursePerformanceRow[]> {
+  await requireAdmin();
   const supabase = await createServerClient();
 
   // Get all courses
@@ -332,6 +342,7 @@ export async function getCoursePerformance(): Promise<CoursePerformanceRow[]> {
 // ============================================================
 
 export async function getQuizPerformance(): Promise<QuizPerformanceRow[]> {
+  await requireAdmin();
   const supabase = await createServerClient();
 
   // Get all quizzes with course info
@@ -432,6 +443,7 @@ export async function getQuizPerformance(): Promise<QuizPerformanceRow[]> {
 // ============================================================
 
 export async function getAtRiskStudents(): Promise<AtRiskStudent[]> {
+  await requireAdmin();
   const supabase = await createServerClient();
 
   // Get all students with active enrollments
@@ -579,6 +591,7 @@ export async function getAtRiskStudents(): Promise<AtRiskStudent[]> {
 export async function getRevenueByMonth(
   months: number = 12
 ): Promise<RevenueByPeriod[]> {
+  await requireAdmin();
   const supabase = await createServerClient();
   const startDate = new Date();
   startDate.setMonth(startDate.getMonth() - months);
@@ -621,6 +634,7 @@ export async function getRevenueByMonth(
 // ============================================================
 
 export async function getStudentActivity(): Promise<StudentActivityRow[]> {
+  await requireAdmin();
   const supabase = await createServerClient();
 
   // Get all students
@@ -772,6 +786,7 @@ export interface CourseAnalyticsDetail {
 export async function getCourseAnalytics(
   courseId: string
 ): Promise<CourseAnalyticsDetail | null> {
+  await requireAdmin();
   const supabase = await createServerClient();
 
   // Get course
@@ -1016,6 +1031,7 @@ export async function getCourseAnalytics(
 export async function getAnalyticsExportData(
   type: "students" | "courses" | "quizzes" | "revenue"
 ): Promise<string> {
+  await requireAdmin();
   switch (type) {
     case "students": {
       const data = await getStudentActivity();
