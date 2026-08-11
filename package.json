@@ -1,6 +1,8 @@
 {
   "name": "simplilms",
+  "version": "1.0.0",
   "private": true,
+  "description": "SimpliLMS — Admissions, enrollment, and learning management SaaS platform for training schools and education businesses.",
   "workspaces": [
     "apps/*",
     "packages/*"
