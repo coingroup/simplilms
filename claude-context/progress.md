@@ -31,6 +31,8 @@ _(Items actively being worked on)_
 
 ## Done
 
+- [x] **AI metadata & scaffold cleanup** — Added version "1.0.0" and description to root package.json. Pushed to chore/gitignore-vercel branch. Completed: 2026-08-10.
+
 _(Move completed items here with completion date)_
 
 ---
