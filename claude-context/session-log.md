@@ -22,3 +22,11 @@
 **Next Session Goals:**
 - Resume work on any pending tasks or new feature development
 - Address launch blockers (domain, Supabase auth hook, env vars, Vercel deployment) as needed
+
+## 2026-08-18 — Credential handling rules added to CLAUDE.md
+
+- **Change:** standing section in `CLAUDE.md` covering credential recovery, overwriting in place, mode encoding, runtime verification, and handoff. Commit `4c66a08` on `dev` — committed, not pushed.
+- **Store of record:** Doppler `simplilms-platform`, Vercel environment, and `.env.local` — three copies, none propagating.
+- **Mode-encoded credential:** Not yet — `.env.example` seeds `sk_test_`/`pk_test_` placeholders. Flagged to add an explicit mode variable **before** live keys arrive rather than swapping values.
+- Unrelated Phase 18–21 edits were already uncommitted in the working tree and were left untouched; only `CLAUDE.md` was staged.
+- Docs only — no code, no migrations, no deploy.
