@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition, useEffect, useCallback } from "react";
+import { useState, useTransition, useEffect, useCallback, useMemo } from "react";
+import { sanitizeHtml } from "@simplilms/core/lib/sanitize";
 import { Button, Card, CardContent, Badge } from "@simplilms/ui";
 import {
   CheckCircle2,
@@ -338,7 +339,7 @@ function LessonContent({
       return content.body ? (
         <div
           className="prose prose-sm max-w-none"
-          dangerouslySetInnerHTML={{ __html: content.body as string }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(content.body as string) }}
         />
       ) : (
         <p className="text-sm text-muted-foreground italic">

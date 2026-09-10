@@ -9,6 +9,13 @@ import {
   getStudentClasses,
   formatCurrency,
 } from "@simplilms/core";
+import {
+  getStudentTotalPoints,
+  getStudentStreak,
+  getStudentBadges,
+} from "@simplilms/core/actions/gamification";
+import { BADGE_DEFINITIONS } from "@simplilms/core/lib/gamification-constants";
+import { StudentStatsBar } from "@simplilms/core/components/gamification/student-stats-bar";
 
 export const metadata = {
   title: "Student Dashboard",
@@ -17,12 +24,15 @@ export const metadata = {
 export default async function StudentDashboardPage() {
   const user = await requireRole(["super_admin", "student"]);
 
-  const [enrollments, payments, programs, unreadMessages, classes] = await Promise.all([
+  const [enrollments, payments, programs, unreadMessages, classes, totalPoints, streak, badges] = await Promise.all([
     getEnrollmentsByUserId(user.user.id),
     getPaymentsByUserId(user.user.id),
     getPrograms(),
     getUnreadMessageCount(user.user.id),
     getStudentClasses(user.user.id),
+    getStudentTotalPoints(user.user.id),
+    getStudentStreak(user.user.id),
+    getStudentBadges(user.user.id),
   ]);
 
   const activeEnrollment = enrollments.find(
@@ -77,6 +87,14 @@ export default async function StudentDashboardPage() {
           Here&apos;s your student dashboard overview.
         </p>
       </div>
+
+      {/* Gamification Stats */}
+      <StudentStatsBar
+        totalPoints={totalPoints}
+        currentStreak={streak?.current_streak || 0}
+        badgeCount={badges.length}
+        totalBadges={Object.keys(BADGE_DEFINITIONS).length}
+      />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => {

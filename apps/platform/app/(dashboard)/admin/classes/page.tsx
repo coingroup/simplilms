@@ -1,7 +1,8 @@
 import { requireRole } from "@simplilms/auth/server";
-import { Badge } from "@simplilms/ui";
-import { Calendar } from "lucide-react";
+import { Badge, Button } from "@simplilms/ui";
+import { Calendar, Plus } from "lucide-react";
 import { createServerClient } from "@simplilms/auth/server";
+import Link from "next/link";
 
 export const metadata = {
   title: "Classes -- Admin",
@@ -35,11 +36,19 @@ export default async function AdminClassesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Classes</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          {classList.length} class{classList.length !== 1 ? "es" : ""} managed
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Classes</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            {classList.length} class{classList.length !== 1 ? "es" : ""} managed
+          </p>
+        </div>
+        <Link href="/admin/classes/new">
+          <Button size="sm">
+            <Plus className="h-4 w-4 mr-2" />
+            New Class
+          </Button>
+        </Link>
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
@@ -77,9 +86,12 @@ export default async function AdminClassesPage() {
                 {classList.map((cls) => (
                   <tr key={cls.id} className="hover:bg-gray-50">
                     <td className="py-3 px-4">
-                      <p className="text-sm font-medium text-gray-900">
+                      <Link
+                        href={`/admin/classes/${cls.id}`}
+                        className="text-sm font-medium text-gray-900 hover:text-primary transition-colors"
+                      >
                         {cls.name}
-                      </p>
+                      </Link>
                       {cls.description && (
                         <p className="text-xs text-gray-400 truncate max-w-xs">
                           {cls.description}

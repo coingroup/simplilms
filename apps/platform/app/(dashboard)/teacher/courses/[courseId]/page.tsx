@@ -15,10 +15,12 @@ import {
   Clock,
   FileText,
   Layers,
+  MessageSquare,
   Users,
   Video,
 } from "lucide-react";
 import Link from "next/link";
+import { getCourseThreadCount } from "@simplilms/core/actions/forums";
 
 export async function generateMetadata({
   params,
@@ -85,6 +87,7 @@ export default async function TeacherCourseDetailPage({
   }
 
   const enrollmentCount = await getCourseEnrollmentCount(courseId);
+  const threadCount = await getCourseThreadCount(courseId);
 
   const totalLessons = modules.reduce(
     (acc, mod) => acc + mod.lessons.length,
@@ -114,6 +117,20 @@ export default async function TeacherCourseDetailPage({
           )}
         </div>
       </div>
+
+      {/* Discussions Link */}
+      <Link
+        href={`/teacher/courses/${courseId}/discussions`}
+        className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors self-start"
+      >
+        <MessageSquare className="h-4 w-4" />
+        Discussions
+        {threadCount > 0 && (
+          <span className="ml-1 bg-primary/10 text-primary text-xs font-semibold px-1.5 py-0.5 rounded-full">
+            {threadCount}
+          </span>
+        )}
+      </Link>
 
       {/* Course Info Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

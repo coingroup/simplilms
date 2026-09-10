@@ -1,5 +1,11 @@
 import { requireRole } from "@simplilms/auth/server";
-import { Award } from "lucide-react";
+import {
+  getAllCertificates,
+  revokeCertificate,
+} from "@simplilms/core/actions/certificates";
+import { Badge, Button, Card } from "@simplilms/ui";
+import { Award, Search, Trash2 } from "lucide-react";
+import { CertificateListClient } from "./certificate-list";
 
 export const metadata = {
   title: "Certificates -- Admin",
@@ -8,23 +14,26 @@ export const metadata = {
 export default async function AdminCertificatesPage() {
   await requireRole(["super_admin"]);
 
+  const certificates = await getAllCertificates();
+
+  const boundRevoke = async (certificateId: string) => {
+    "use server";
+    return revokeCertificate(certificateId);
+  };
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Certificates</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Manage certificate templates and issued certificates.
+          {certificates.length} certificate{certificates.length !== 1 ? "s" : ""} issued
         </p>
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div className="text-center py-12">
-          <Award className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-          <p className="text-sm text-gray-500">
-            Certificate management coming soon.
-          </p>
-        </div>
-      </div>
+      <CertificateListClient
+        certificates={certificates}
+        onRevoke={boundRevoke}
+      />
     </div>
   );
 }

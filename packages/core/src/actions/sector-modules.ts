@@ -158,6 +158,7 @@ export async function activateSectorModule(sectorModuleId: string): Promise<{
 }> {
   const { user, error: authError } = await getUser();
   if (authError || !user) return { error: "Not authenticated" };
+  if (user.role !== "super_admin") return { error: "Insufficient permissions" };
 
   const supabase = await createServerClient();
   const tenantId = getTenantId();
@@ -206,6 +207,7 @@ export async function deactivateSectorModule(
 ): Promise<{ success?: boolean; error?: string }> {
   const { user, error: authError } = await getUser();
   if (authError || !user) return { error: "Not authenticated" };
+  if (user.role !== "super_admin") return { error: "Insufficient permissions" };
 
   const supabase = await createServerClient();
   const { error } = await (supabase as any)

@@ -1,7 +1,9 @@
 import { requireRole } from "@simplilms/auth/server";
 import { BookOpen } from "lucide-react";
 import { getStudentClasses, getAttendanceByStudent } from "@simplilms/core";
+import { getUpcomingSessions } from "@simplilms/core/actions/classes";
 import { ClassCard } from "@simplilms/core/components/classes/class-card";
+import { UpcomingSessions } from "@simplilms/core/components/classes/upcoming-sessions";
 
 export const metadata = {
   title: "My Classes",
@@ -10,9 +12,10 @@ export const metadata = {
 export default async function StudentClassesPage() {
   const user = await requireRole(["super_admin", "student"]);
 
-  const [classes, attendance] = await Promise.all([
+  const [classes, attendance, upcomingSessions] = await Promise.all([
     getStudentClasses(user.user.id),
     getAttendanceByStudent(user.user.id),
+    getUpcomingSessions(user.user.id),
   ]);
 
   return (
@@ -23,6 +26,14 @@ export default async function StudentClassesPage() {
           View your enrolled classes and attendance.
         </p>
       </div>
+
+      {/* Upcoming Live Sessions */}
+      {upcomingSessions.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold mb-3">Upcoming Live Sessions</h2>
+          <UpcomingSessions sessions={upcomingSessions} role="student" />
+        </div>
+      )}
 
       {classes.length === 0 ? (
         <div className="text-center py-16 text-gray-500">

@@ -634,7 +634,7 @@ export async function createCourseFromOutline(
               max_attempts: 3,
               time_limit_minutes: null,
               shuffle_questions: true,
-              show_correct_answers: true,
+              show_answers_after: "submission",
               is_published: true,
             })
             .select("id")

@@ -1,7 +1,13 @@
 import { requireRole } from "@simplilms/auth/server";
 import { redirect } from "next/navigation";
 import { getInstructorEarnings } from "@simplilms/core";
+import {
+  getConnectAccountStatus,
+  createConnectOnboardingLink,
+  createConnectDashboardLink,
+} from "@simplilms/core/actions/stripe-connect";
 import { EarningsSummary } from "@simplilms/core/components/teacher/earnings-summary";
+import { ConnectStatusCard } from "./connect-status";
 
 export const metadata = {
   title: "Earnings",
@@ -15,7 +21,20 @@ export default async function TeacherEarningsPage() {
     redirect("/teacher");
   }
 
-  const earnings = await getInstructorEarnings(user.user.id);
+  const [earnings, connectStatus] = await Promise.all([
+    getInstructorEarnings(user.user.id),
+    getConnectAccountStatus(user.user.id),
+  ]);
+
+  const boundOnboard = async () => {
+    "use server";
+    return createConnectOnboardingLink();
+  };
+
+  const boundDashboard = async () => {
+    "use server";
+    return createConnectDashboardLink();
+  };
 
   return (
     <div className="space-y-6">
@@ -25,6 +44,12 @@ export default async function TeacherEarningsPage() {
           Track your commission earnings across all classes.
         </p>
       </div>
+
+      <ConnectStatusCard
+        status={connectStatus}
+        onOnboard={boundOnboard}
+        onDashboard={boundDashboard}
+      />
 
       <EarningsSummary earnings={earnings} />
     </div>

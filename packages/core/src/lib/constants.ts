@@ -16,6 +16,8 @@ import {
   Building2,
   Award,
   Layers,
+  Trophy,
+  Star,
   type LucideIcon,
 } from "lucide-react";
 
@@ -70,6 +72,8 @@ export const SIDEBAR_NAV: Record<UserRole, NavItem[]> = {
     { label: "Dashboard", href: "/student", icon: LayoutDashboard },
     { label: "Profile", href: "/profile", icon: User },
     { label: "Courses", href: "/student/courses", icon: GraduationCap },
+    { label: "Badges", href: "/student/badges", icon: Star },
+    { label: "Leaderboard", href: "/student/leaderboard", icon: Trophy },
     { label: "Certificates", href: "/student/certificates", icon: Award },
     { label: "Payments", href: "/student/payments", icon: DollarSign },
     { label: "Messages", href: "/student/messages", icon: MessageSquare },

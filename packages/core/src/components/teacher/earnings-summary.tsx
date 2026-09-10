@@ -144,16 +144,14 @@ export function EarningsSummary({ earnings }: EarningsSummaryProps) {
         </CardContent>
       </Card>
 
-      {/* Payout info */}
+      {/* Commission info */}
       <Card>
         <CardContent className="py-4">
           <p className="text-sm text-muted-foreground">
-            Payouts are processed through Stripe Connect. Your commission
-            ({Math.round((earnings.classes[0]?.commission_rate ?? 0.5) * 100)}%)
-            is automatically calculated and transferred to your connected
-            account. For payout questions, contact{" "}
-            your institution&apos;s admissions office
-            .
+            Your commission rate is{" "}
+            {Math.round((earnings.classes[0]?.commission_rate ?? 0.5) * 100)}%
+            of class revenue. Earnings are calculated based on enrolled student
+            count and class price.
           </p>
         </CardContent>
       </Card>

@@ -3,7 +3,10 @@ import { notFound, redirect } from "next/navigation";
 import { getStudentCourseEnrollments } from "@simplilms/core/actions/progress";
 import { getStudentLessonProgress } from "@simplilms/core/actions/progress";
 import { getCourseWithContent } from "@simplilms/core/actions/courses";
+import { getCourseThreadCount } from "@simplilms/core/actions/forums";
 import { CoursePlayerClient } from "./player";
+import { MessageSquare } from "lucide-react";
+import Link from "next/link";
 
 interface CoursePageProps {
   params: Promise<{ courseId: string }>;
@@ -30,18 +33,33 @@ export default async function StudentCoursePlayerPage({
   }
 
   const progress = await getStudentLessonProgress(user.user.id, courseId);
+  const threadCount = await getCourseThreadCount(courseId);
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-heading text-2xl font-bold">
-          {courseData.course.title}
-        </h1>
-        {courseData.course.description && (
-          <p className="text-sm text-muted-foreground mt-1">
-            {courseData.course.description}
-          </p>
-        )}
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="font-heading text-2xl font-bold">
+            {courseData.course.title}
+          </h1>
+          {courseData.course.description && (
+            <p className="text-sm text-muted-foreground mt-1">
+              {courseData.course.description}
+            </p>
+          )}
+        </div>
+        <Link
+          href={`/student/courses/${courseId}/discussions`}
+          className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors shrink-0"
+        >
+          <MessageSquare className="h-4 w-4" />
+          Discussions
+          {threadCount > 0 && (
+            <span className="ml-1 bg-primary/10 text-primary text-xs font-semibold px-1.5 py-0.5 rounded-full">
+              {threadCount}
+            </span>
+          )}
+        </Link>
       </div>
 
       {/* Overall Progress Bar */}

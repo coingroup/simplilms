@@ -71,3 +71,4 @@ pnpm-lock.yaml
 
 # Claude context — explicitly tracked
 !claude-context/
+.claude/

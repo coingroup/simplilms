@@ -11,14 +11,15 @@
     "clean": "rm -rf .next node_modules .turbo"
   },
   "dependencies": {
-    "@simplilms/auth": "*",
-    "@simplilms/database": "*",
-    "@simplilms/core": "*",
-    "@simplilms/ui": "*",
     "@hookform/resolvers": "^3.9.1",
+    "@simplilms/auth": "*",
+    "@simplilms/core": "*",
+    "@simplilms/database": "*",
+    "@simplilms/ui": "*",
     "@stripe/stripe-js": "^8.9.0",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.47.0",
+    "dompurify": "^3.3.3",
     "lucide-react": "^0.468.0",
     "next": "^14.2.21",
     "react": "^18.3.1",
@@ -30,6 +31,7 @@
   },
   "devDependencies": {
     "@simplilms/config": "*",
+    "@types/dompurify": "^3.0.5",
     "@types/node": "^22.0.0",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",

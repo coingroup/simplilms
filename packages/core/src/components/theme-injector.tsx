@@ -7,6 +7,11 @@ import { useTenant } from "../context/tenant-context";
  * shadcn/ui CSS variables expect the format "H S% L%" (e.g., "18 89% 54%").
  */
 function hexToHSL(hex: string): string {
+  // Validate hex input to prevent CSS injection
+  if (!/^#[0-9a-fA-F]{6}$/.test(hex)) {
+    return "0 0% 0%";
+  }
+
   // Remove # prefix
   const h = hex.replace("#", "");
 
