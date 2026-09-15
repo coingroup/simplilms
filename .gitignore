@@ -1,70 +1,59 @@
-# Dependencies
-node_modules/
+
+.cache/
+.claude/settings.local.json
+.DS_Store
+.env
+.env.development.local
+.env.local
+.env.production.local
+.env.test.local
+.env*.local
+.idea/
+.next/
+.nyc_output/
 .pnp
 .pnp.js
-
-# Build outputs
-.next/
-out/
-build/
-dist/
-.vercel
-
-# Environment variables
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-.env*.local
-
-# Debug logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-
-# OS files
-.DS_Store
-Thumbs.db
-*.swp
-*.swo
-*~
-
-# IDE
-.vscode/
-.idea/
-*.sublime-project
-*.sublime-workspace
-
-# TypeScript
-*.tsbuildinfo
-next-env.d.ts
-
-# Testing
-coverage/
-.nyc_output/
-
-# Supabase
-supabase/.temp/
-supabase/.branches/
-
-# Stripe CLI
 .stripe/
-
-# Turbo
 .turbo/
-
-# Package manager lock files (using npm — keep package-lock.json)
-yarn.lock
-pnpm-lock.yaml
-
-# Tenant provisioning output (contains secrets)
-/tenants/
-
-# Misc
+.vercel
+.vscode/
 *.log
 *.pid
-*.seed
 *.pid.lock
-.cache/
+*.seed
+*.sublime-project
+*.sublime-workspace
+*.swo
+*.swp
+*.tsbuildinfo
+*~
+/tenants/
+# Build outputs
+# Debug logs
+# Dependencies
+# Environment variables
+# IDE
+# Misc
+# OS files
+# Package manager lock files (using npm — keep package-lock.json)
+# Stripe CLI
+# Supabase
+# Tenant provisioning output (contains secrets)
+# Testing
+# Turbo
+# TypeScript
+build/
+coverage/
+dist/
+next-env.d.ts
+node_modules/
+npm-debug.log*
+out/
+pnpm-debug.log*
+pnpm-lock.yaml
+supabase/.branches/
+supabase/.temp/
+Thumbs.db
+yarn-debug.log*
+yarn-error.log*
+yarn.lock
