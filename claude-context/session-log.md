@@ -38,5 +38,19 @@
 - **Dependency found:** all 151 public-schema RLS policies are `TO public`; 146 call current_tenant_id()/current_user_role(). After the revoke an anon query on those tables errors with "permission denied for function" instead of returning 0 rows. Code check: loadTenantConfig uses the service-role key; the only RPC callers (profile page, notifications action) run signed in. Nothing found that queries those tables as anon.
 - **Change:** migration `20261026000000_revoke_anon_execute_helper_functions.sql` (REVOKE from PUBLIC, anon; GRANT to authenticated, service_role). Not applied anywhere yet.
 - **No staging project exists for simplilms** (one project per tenant; only rorfxjwsggtbgsnzlzec). Staging proof is not possible; assumption: proof is the read-only live checks above plus verify-in-window below. Recorded as an assumption for the owner to overrule.
-- **Production:** queued with prod-queue (see below once id is known). Not applied by this session.
+- **Production:** queued as prod-queue P403 on 2026-10-26. PR #11 merged into dev. Not applied by this session; waits for the owner window.
 - **Open:** after the window, re-run security advisors; expect only accepted items. Asana task is the owner's to close (covers seven projects; this repo's part only).
+
+### 2026-10-29 — P403 applied in production window
+- **Applied:** migration revoke_anon_execute_helper_functions to rorfxjwsggtbgsnzlzec (same SQL as 20261026000000). Window opened by owner for P403.
+- **Verified:** has_function_privilege: anon false, authenticated true, service_role true on all 4 functions. Security advisors now list only 4 authenticated_security_definer_function_executable WARNs (accepted: RLS helpers and signed-in own-row updates).
+- **Not verified:** no anon page smoke test run (no anon query path found in code). Undo is the GRANT ... TO anon, PUBLIC in P403 text if a public page breaks.
+- **Closed:** prod-queue done 403. Asana task remains the owner to close.
+
+## 2026-11-17 — Dev CI red (test-dev): handoff from coingroup-tooling (owner item 3932)
+
+- **Cause (verified from run 44165715719 log):** `npm run lint` failed with `sh: 1: eslint: not found` in packages/database. ESLint was never a dependency and no ESLint config existed in any workspace. CI on dev has failed on every push since it was added 03-17-2026 (8 runs, all red), so lint has never run.
+- **Fix (branch fix/ci-eslint-setup):** eslint 8.57.1 + eslint-config-next 14.2.35 in apps/platform and apps/marketing (`.eslintrc.json` extends next/core-web-vitals and registers @typescript-eslint so existing disable comments resolve); eslint + @typescript-eslint parser/plugin 8.73.0 in packages/auth, database, ui (`.eslintrc.json` with eslint:recommended + typescript-eslint recommended, with an override so `eslint src/` lints .ts/.tsx). One real lint error fixed: a local variable named `module` in admin/sectors/[sectorKey]/page.tsx renamed to `sectorModule` (no behavior or copy change). No rules disabled.
+- **Verified locally:** `turbo run lint --force` 5/5 green (only `<img>` warnings); `turbo run type-check` 6/6 green. `npm run build` NOT RUN to completion: the sandbox cannot reach fonts.googleapis.com (next/font). The dev CI job does not build.
+- **Production-safety finding:** the only simplilms Supabase project is production (rorfxjwsggtbgsnzlzec; confirmed via list_projects 11-17). The test-dev job ends with `supabase db push` against secret SUPABASE_DEV_REF on every dev push; there is no dev project for it to point at, so it likely points at production (values not readable). Added a CI step that refuses the push when SUPABASE_DEV_REF is empty or equals SUPABASE_PROD_REF, without printing either. Also: repo secrets list only SUPABASE_ACCESS_TOKEN, SUPABASE_DEV_REF, SUPABASE_PROD_REF; the job references SUPABASE_DEV_ANON_KEY, SUPABASE_DEV_SERVICE_ROLE_KEY, SUPABASE_DEV_DB_PASSWORD, which are not set.
+- **Owner decision needed:** what the dev migration step should target (a new simplilms-dev Supabase project, or remove the step). Asked via notify-owner; default until answered: guard stays, and dev CI may stay red at the guard or migration step.
