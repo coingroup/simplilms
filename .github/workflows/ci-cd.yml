@@ -58,28 +58,10 @@ jobs:
           DATABASE_URL: postgresql://postgres:${{ secrets.SUPABASE_DEV_DB_PASSWORD }}@db.${{ secrets.SUPABASE_DEV_REF }}.supabase.co:5432/postgres
         run: npm test --if-present
 
-      # Safety gate: this job runs on every push to dev. Refuse to push
-      # migrations unless the dev ref is set and differs from production.
-      - name: Refuse migration push unless dev ref is a separate project
-        env:
-          DEV_REF: ${{ secrets.SUPABASE_DEV_REF }}
-          PROD_REF: ${{ secrets.SUPABASE_PROD_REF }}
-        run: |
-          if [ -z "$DEV_REF" ] || [ -z "$PROD_REF" ]; then
-            echo "::error::SUPABASE_DEV_REF or SUPABASE_PROD_REF is not set; refusing to push migrations."
-            exit 1
-          fi
-          if [ "$DEV_REF" = "$PROD_REF" ]; then
-            echo "::error::SUPABASE_DEV_REF equals SUPABASE_PROD_REF; refusing to push dev migrations to production."
-            exit 1
-          fi
-
-      - name: Run Supabase migrations on dev
-        uses: supabase/setup-cli@v1
-      - run: supabase db push --project-ref "$DEV_REF"
-        env:
-          DEV_REF: ${{ secrets.SUPABASE_DEV_REF }}
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      # No migration push from this job (owner decision 11-17-2026, item 3977).
+      # SimpliLMS has no dev Supabase project; SUPABASE_DEV_REF points at a
+      # project that is not simplilms. Re-add a link + push step only once a
+      # simplilms dev project exists and its ref and DB password are set.
 
   # ─────────────────────────────────────────────
   # Run on PR to main (gates the merge)
