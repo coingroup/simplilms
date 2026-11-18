@@ -88,6 +88,7 @@ Tenant branding is applied via:
 - Server actions use `"use server"` directive and live in `packages/core/src/actions/`
 - Components use `useTenant()` hook for dynamic branding
 - All tables have `tenant_id` column with RLS policies
+- RLS helpers live in the `private` schema (since migration 20261118000000): new policies and functions call `private.current_tenant_id()` and `private.current_user_role()`, schema-qualified
 - `getTenantId()` from `@simplilms/core` resolves tenant from `TENANT_ID` env var
 - No hardcoded brand references in any runtime code
 
