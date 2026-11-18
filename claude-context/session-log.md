@@ -61,3 +61,19 @@
 - **Misleading for next session:** apps/platform build fails in this sandbox only because next/font cannot reach fonts.googleapis.com; it is not a code fault. packages/core has no lint script (proposal only, not built).
 - **Owner decision 11-17-2026 (item 3977): option A, remove the dev migration push.** Done on branch fix/ci-remove-dev-migration-push: removed the setup-cli step, the `supabase db push` step and the guard (it only protected that push) from test-dev; left a comment on when to re-add it. test-dev now runs install, lint, type check, tests (none defined).
 - **Known, not changed:** deploy-prod (push to main) also runs `supabase db push --project-ref`, the same unknown flag, against production. It will fail the same way when main is next pushed. Production CI is the owner's; flagged in the summary alert, not edited.
+- **Landed and verified 11-17-2026:** PR #15 (https://github.com/coingroup/simplilms/pull/15) merged into dev. **Dev CI green:** run https://github.com/coingroup/simplilms/actions/runs/44201015974 (test-dev: install, lint, type check, tests all pass). First green dev run since CI was added 03-17-2026.
+- **promote staging** refused: "no staging branch on origin". simplilms has no staging branch; not created (structural, owner's call). The promotion-guard workflow expects PRs to main from staging, so a main release would need one.
+
+## 2026-11-18 — Supabase lint 0029 cleanup (handoff from fitnneka; owner items 3366 and 4067, option A)
+
+- **Source:** owner message 11-18-2026 2:09 PM (inbox file), relaying the fitnneka handoff. Owner decided 11-18: lint 0029 (signed-in-callable SECURITY DEFINER) warnings get fixed, not accepted (reverses item 3665 for this category). Asana 1219224655474351.
+- **Read-only on prod rorfxjwsggtbgsnzlzec (11-18):** advisors show 4 lint 0029 WARNs, nothing else. Five SECURITY DEFINER functions in public:
+  - current_tenant_id(): RLS helper (139 policy refs), no rpc caller, no trigger, no auth.uid() (reads JWT claims).
+  - current_user_role(): RLS helper (101 policy refs), same as above.
+  - update_student_profile(text x4): rpc from apps/platform/app/(dashboard)/profile/page.tsx; WHERE id = auth.uid().
+  - update_notification_preferences(bool, bool): rpc from packages/core/src/actions/notifications.ts; WHERE id = auth.uid().
+  - custom_access_token_hook(jsonb): not flagged (execute only supabase_auth_admin, service_role); the Auth hook setting names it by schema. Whether the hook is enabled could not be read (supa-auth-config refuses those fields). Left in public; owner asked.
+  - No other function or view references these names. No `private` schema existed.
+- **Change:** migration `20261118000000_move_security_definer_to_private.sql`: schema private (usage: authenticated, service_role), the 4 functions moved (OID kept), search_path private, public, pg_temp, SECURITY INVOKER wrappers in public for the 2 rpc functions (same signature, search_path ''), grants, pgrst reload.
+- **Proof (no dev/staging project exists):** PGlite harness in the session scratchpad replays prod's 5 definitions and ACLs, applies the migration, and checks: only the hook left as definer in public; OIDs kept; policies resolve to private.*; wrappers work signed in and update only the caller's row; anon refused on wrappers and private; RLS still filters by tenant; service_role works; hook unaffected. All passed 11-18.
+- **Review 11-18:** independent reviewer agent, no blocking findings. Applied: removed BEGIN/COMMIT (MCP apply_migration wraps its own transaction); added a CLAUDE.md convention that new policies call `private.current_tenant_id()` / `private.current_user_role()`. Harness re-run: all passed. Reviewer notes kept: anon reads of RLS tables already fail since 10-26 (unchanged); post-apply smoke on prod (student profile save, notification toggle, one RLS read) is the owner's, signed in.
